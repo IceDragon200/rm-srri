@@ -1,0 +1,2 @@
+class RGX::Tone
+end
