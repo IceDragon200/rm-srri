@@ -1,4 +1,8 @@
+*.o
+*.so
 link-dirs
 unlink-dirs
-src/ext/rgx/*.o
-src/ext/rgx/*.so
+rgx/*.o
+rgx/*.so
+starruby/*.o
+starruby/*.so
