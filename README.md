@@ -7,6 +7,10 @@ A wrapper for StarRuby, which implements most of the RGSS3
 functionalities
 ```
 
+## TODO
+- Make a sample game
+- Actually use the Test suite instead of this hax-ish stuff
+
 ## Missing
 Since I've been a bit too busy, or in-experienced, some functionality is missing
 from the interface.
