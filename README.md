@@ -52,6 +52,6 @@ Viewport, Sprite
 ```
 
 ## Credits
-CaptainJet (https://github.com/CaptainJet)
-StarRuby (https://github.com/hajimehoshi/starruby)
-Enterbrain
+- CaptainJet (https://github.com/CaptainJet)
+- StarRuby (https://github.com/hajimehoshi/starruby)
+- Enterbrain
