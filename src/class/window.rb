@@ -22,11 +22,10 @@ class RGX::Window
 
   def draw(texture)
     return unless @visible
-    return if @width == 0
-    return if @height == 0
+    return if @width <= 0
+    return if @height <= 0
 
     unless @redrawn
-      puts "Redrawing: #{self}"
       remake_window
       redraw_window
     end
@@ -36,155 +35,128 @@ class RGX::Window
     view.translate(@x, @y) do |vx, vy|
       pad, pad2 = @padding, @padding * 2
 
-      arra = [vx, vy, @width, @height]
+      # ContentBackground
+      ay, ax = 0, 0
+      #scale_x = @openness / 255.0
+      scale_x = 1.0
+      scale_y = @openness / 255.0
+      #ax = ((@width / 2.0) * (1 - scale_x)).to_i if scale_x != 1.0
+      ay = ((@height / 2.0) * (1 - scale_y)).to_i if scale_y != 1.0
 
-      draw_content_background(texture, *arra)
-      draw_window_skin(texture, *arra)
+      texture.render_texture(
+        @_texture_content_background, vx + ax, vy + ay,
+        src_width: [@width, @_texture_content_background.width].min,
+        src_height: [@height, @_texture_content_background.height].min,
+        tone_red: @tone.red, tone_green: @tone.green, tone_blue: @tone.blue,
+        saturation: 255 - @tone.grey,
+        alpha: @back_opacity * @opacity / 255.0,
+        scale_x: scale_x, scale_y: scale_y
+      )
 
-      return if @openness < 255
-      draw_cursor(texture,
-        vx + pad + @cursor_rect.x, vy + pad + @cursor_rect.y,
-        @width - pad2, @height - pad2
-      ) unless @cursor_rect.empty?
+      # Window Skin
+      texture.render_texture(
+        @_texture_window_skin, vx + ax, vy + ay,
+        alpha: @opacity,
+        scale_x: scale_x, scale_y: scale_y
+      )
 
-      draw_content(
-        texture,
-        vx + pad, vy + pad, @width - pad2, @height - pad2
-      ) if @contents and !@contents.disposed?
+      #return if @openness < 255 # true RGSS Behaviour
 
+      if @_cursor_texture and (@cursor_rect.width != @_cursor_texture.width or
+       @cursor_rect.height != @_cursor_texture.height)
+        @_cursor_texture.dispose
+        @_cursor_texture = nil
+      end
+
+      unless @cursor_rect.empty? || @openness < 255
+        redraw_cursor() unless @_cursor_texture
+
+        texture.render_texture(
+          @_cursor_texture,
+          vx + pad + @cursor_rect.x - @ox, vy + pad + @cursor_rect.y - @oy,
+          alpha: @_cursor_opacity
+        )
+
+      end
+
+      return unless @contents and !@contents.disposed?
+
+      texture.render_texture(
+        @contents.texture, vx + pad + ax, vy + pad + ay,
+        src_x: @ox, src_y: @oy,
+        src_width: [@width - pad2, @contents.width].min,
+        src_height: [@height - pad2, @contents.height].min,
+        alpha: @contents_opacity,
+        # RGX Behaviour
+        scale_x: scale_x, scale_y: scale_y
+      )
     end
   end
 
 private
 
-  def draw_content_background(texture, x, y, w, h)
-    cw = [w, @_texture_content_background.width].min
-    ch = [h, @_texture_content_background.height].min
+  def redraw_cursor
+    cw, ch = @cursor_rect.width, @cursor_rect.height
 
-    ay = 0
-    scale = @openness / 255.0
-    ay = ((h / 2.0) * (1 - scale)).to_i if scale != 1.0
+    @_cursor_texture = StarRuby::Texture.new(cw, ch)
 
-    texture.render_texture(
-      @_texture_content_background, x, y + ay,
-      src_width: cw, src_height: ch,
-      tone_red: @tone.red, tone_green: @tone.green, tone_blue: @tone.blue,
-      saturation: 255 - @tone.grey,
-      alpha: @back_opacity * @opacity / 255.0,
-      scale_y: @openness / 255.0
+    #scale_x = cw / 32.0
+    #scale_y = ch / 32.0
+
+    src_texture = @windowskin.texture
+
+    dprops = {
+      src_x: 64, src_y: 64, src_width: 8, src_height: 8
+    }
+
+    props = dprops.dup
+
+    # top-left
+    @_cursor_texture.render_texture(src_texture, 0, 0, props)
+
+    # top-right
+    props[:src_x] += 24
+    @_cursor_texture.render_texture(src_texture, cw - 8, 0, props)
+
+    # top
+    TextureTool.loop_texture(
+      @_cursor_texture, Rect.new(8, 0, cw - 16, 8),
+      src_texture, Rect.new(64 + 8, 64, 16, 8)
     )
-  end
 
-  def draw_window_skin(texture, x, y, w, h)
-    ay = 0
-    scale = @openness / 255.0
-    ay = ((h / 2.0) * (1 - scale)).to_i if scale != 1.0
-
-    texture.render_texture(
-      @_texture_window_skin, x, y + ay,
-      alpha: @opacity,
-      scale_y: scale
+    # mid-left
+    TextureTool.loop_texture(
+      @_cursor_texture, Rect.new(0, 8, 8, ch - 16),
+      src_texture, Rect.new(64, 64 + 8, 8, 16)
     )
-  end
 
-  def draw_cursor(texture, x, y, w, h)
-    return false if @cursor_rect.empty?
+    # mid-right
+    TextureTool.loop_texture(
+      @_cursor_texture, Rect.new(cw - 8, 8, 8, ch - 16),
+      src_texture, Rect.new(64 + 24, 64 + 8, 8, 16)
+    )
 
-    if @_cursor_texture and (@cursor_rect.width != @_cursor_texture.width or
-     @cursor_rect.height != @_cursor_texture.height)
-      @_cursor_texture.dispose
-      @_cursor_texture = nil
-    end
+    # mid
+    TextureTool.loop_texture(
+      @_cursor_texture, Rect.new(8, 8, cw - 16, ch - 16),
+      src_texture, Rect.new(64 + 8, 64 + 8, 16, 16)
+    )
 
-    unless @_cursor_texture
-      cw, ch = @cursor_rect.width, @cursor_rect.height
+    props = dprops.dup
 
-      @_cursor_texture = StarRuby::Texture.new(cw, ch)
+    props[:src_y] += 24
 
-      #scale_x = cw / 32.0
-      #scale_y = ch / 32.0
+    # bottom-left
+    @_cursor_texture.render_texture(src_texture, 0, ch - 8, props)
 
-      src_texture = @windowskin.texture
+    # bottom-right
+    props[:src_x] += 24
+    @_cursor_texture.render_texture(src_texture, cw - 8, ch - 8, props)
 
-      dprops = {
-        src_x: 64, src_y: 64, src_width: 8, src_height: 8
-      }
-
-      props = dprops.dup
-
-      # top-left
-      @_cursor_texture.render_texture(src_texture, 0, 0, props)
-
-      # top-right
-      props[:src_x] += 24
-      @_cursor_texture.render_texture(src_texture, cw - 8, 0, props)
-
-      # top
-      TextureTool.loop_texture(
-        @_cursor_texture, Rect.new(8, 0, cw - 16, 8),
-        src_texture, Rect.new(64 + 8, 64, 16, 8)
-      )
-
-      # mid-left
-      TextureTool.loop_texture(
-        @_cursor_texture, Rect.new(0, 8, 8, ch - 16),
-        src_texture, Rect.new(64, 64 + 8, 8, 16)
-      )
-
-      # mid-right
-      TextureTool.loop_texture(
-        @_cursor_texture, Rect.new(cw - 8, 8, 8, ch - 16),
-        src_texture, Rect.new(64 + 24, 64 + 8, 8, 16)
-      )
-
-      # mid
-      TextureTool.loop_texture(
-        @_cursor_texture, Rect.new(8, 8, cw - 16, ch - 16),
-        src_texture, Rect.new(64 + 8, 64 + 8, 16, 16)
-      )
-
-      props = dprops.dup
-
-      props[:src_y] += 24
-
-      # bottom-left
-      @_cursor_texture.render_texture(src_texture, 0, ch - 8, props)
-
-      # bottom-right
-      props[:src_x] += 24
-      @_cursor_texture.render_texture(src_texture, cw - 8, ch - 8, props)
-
-      # bottom
-      TextureTool.loop_texture(
-        @_cursor_texture, Rect.new(8, ch - 8, cw - 16, 8),
-        src_texture, Rect.new(64 + 8, 64 + 24, 16, 8)
-      )
-
-    end
-
-    texture.render_texture(
-      @_cursor_texture, x - @ox, y - @oy, alpha: @_cursor_opacity)
-  end
-
-  def draw_content(texture, x, y, w, h)
-    cw = [w, @contents.width].min
-    ch = [h, @contents.height].min
-
-    # cropping
-      #dx = vrect.x - rx
-      #dy = vrect.y - ry
-      #dw = (rx + sw) - (vrect.x + vrect.width)
-      #dh = (ry + sh) - (vrect.y + vrect.height)
-
-      #(rx += dx; sx += dx; sw -= dx) if dx > 0
-      #(ry += dy; sy += dy; sh -= dy) if dy > 0
-      #sw -= dw if dw > 0
-      #sh -= dh if dh > 0
-
-    texture.render_texture(
-      @contents.texture, x, y,
-      src_x: @ox, src_y: @oy, src_width: cw, src_height: ch,
-      alpha: @contents_opacity
+    # bottom
+    TextureTool.loop_texture(
+      @_cursor_texture, Rect.new(8, ch - 8, cw - 16, 8),
+      src_texture, Rect.new(64 + 8, 64 + 24, 16, 8)
     )
   end
 
@@ -358,6 +330,7 @@ public
     @_texture_window_skin.dispose if @_texture_window_skin
     @_texture_content_background.dispose if @_texture_content_background
     @_cursor_texture.dispose if @_cursor_texture
+
     unregister_drawable
     super
   end
@@ -371,6 +344,8 @@ public
       else
         @_cursor_opacity = 255 - 128 * (@_frames % 15) / 15.0
       end
+    else
+      @_cursor_opacity = 128
     end
   end
 

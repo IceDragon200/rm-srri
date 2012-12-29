@@ -33,12 +33,7 @@ module TextureTool
     )
   end
 
-  def self.loop_texture(texture, trg_rect, bs_texture, src_rect, ox=0, oy=0, ext_properties={})
-
-    src_texture = bs_texture.dup #Texture.new(src_rect.width, src_rect.height)
-    offset_texture_x(src_texture, ox) if ox != 0
-    offset_texture_y(src_texture, oy) if oy != 0
-
+  def self.loop_texture(texture, trg_rect, src_texture, src_rect, ext_properties={})
     vx, vy = trg_rect.x, trg_rect.y
     sx, sy, w, h = src_rect.as_ary
 
@@ -91,7 +86,7 @@ module TextureTool
       src_texture, vx + (xloop * w), vy + (yloop * h), properties
     ) if xrem > 0 && yrem > 0
 
-    src_texture.dispose
+    #src_texture.dispose
 
     return true
   end

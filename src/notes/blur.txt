@@ -1,0 +1,44 @@
+<IceDragon> Zeriab do you have a Bitmap#blur function thrown down anywhere?
+<Zeriab> Nope
+<Zeriab> Or at least I don't think Ihave
+<IceDragon> >,< Know where I could swipe one?
+<Zeriab> But I do remember helping someone making one
+<Zeriab> I can tell you there is a performance issue with it ^^
+<Zeriab> So preferable it should be implemented in native code
+<Zeriab> or even better in a GPU language
+<IceDragon> just need the code.
+<IceDragon> >: IcanTranslateItThen
+<Zeriab> Go from top-left corner
+<Zeriab> row by row
+<Zeriab> to bottom-right-corner
+<IceDragon> 0, 0
+<Zeriab> for each pixel
+<Zeriab> look at the pixel to the left and above
+<IceDragon> -1, -1 ?
+<Zeriab> summarize those with the current pixel and normalize (divide by three)
+<Zeriab> naturally treating edge-cases
+<Zeriab> Then do one more run
+<Zeriab> this time backwards
+<Zeriab> where you look at the pixel to the right and below
+<Zeriab> ^^
+<IceDragon> o.e
+<egon> =)
+<Zeriab> Simple algorithm
+<IceDragon> you lost me at the summarize part
+<Zeriab> (current_pixel + left_pixel + above_pixel) / 3
+<Zeriab> edge-cases needing special treatment
+<IceDragon> ._. in my case I would need to add each individual color and make a new one?
+<Zeriab> Yes ^^
+<Zeriab> Well
+<Zeriab> You can run throw the bitmap first figuring out which colors are used
+<IceDragon> and just cache the values?
+<Zeriab> and add a step where you find the color the shortest 'distance' away
+<Zeriab> and use that instead
+<IceDragon> ._.
+<IceDragon> I think I'll try the algorithim first
+* egon puts on jimjams
+<IceDragon> and then improve it
+<Zeriab> But I would still suggest implementingthe simple algorithm first
+<IceDragon> bye egon
+<Zeriab> So you have something to compare against
+<IceDragon> yus

@@ -11,7 +11,7 @@ $rtp_path = "/home/icy/Dropbox/xdev/RMVXA-RTP/"
 begin
   require_relative './starruby/starruby.so'
 rescue(LoadError) => ex
-  raise(LoadError, "Could not load StarRuby!")
+  raise(LoadError, "Could not load StarRuby!\n #{ex.inspect}")
 end
 
 require_relative './rgx/local.rb'

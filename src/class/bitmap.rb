@@ -3,7 +3,7 @@ module StarRuby
   class Texture
 
     def rect
-      Rect.new(0, 0, width, height)
+      RGX::Rect.new(0, 0, width, height)
     end
 
   end
@@ -12,6 +12,9 @@ end
 
 class RGX::Bitmap
 
+  # Transparent Color used for clearing
+  SR_TRANSPARENT = StarRuby::Color.new(255, 255, 255, 0).freeze
+
   include Interface::IDisposable
 
   attr_accessor :texture
@@ -19,28 +22,38 @@ class RGX::Bitmap
   def initialize(*args)
     case args.size
     when 1 # Path
-      filename, = *args # String
-      # Try RTP
-
-      try_rtp_path(filename.downcase) do |fn|
-        @texture = StarRuby::Texture.load(fn) # Texture
+      filename, = *args # String / Texture
+      case filename
+      when String
+        # Try RTP
+        try_rtp_path(filename.downcase) do |fn|
+          @texture = StarRuby::Texture.load(fn) # Texture
+        end
+      when StarRuby::Texture
+        @texture = filename
       end
     when 2 # width, height
       width, height = *args
+
+      raise(ArgumentError, "width too small") if width <= 0
+      raise(ArgumentError, "height too small") if height <= 0
+
       @texture = StarRuby::Texture.new(width, height)
     end
 
     @font = RGX::Font.new
-    self
+  rescue(Exception) => ex
+    @texture.dispose if @texture && !@texture.disposed?
+    raise(ex)
   end
 
   def dispose
+    @texture.dispose if @texture and !@texture.disposed?
     super
-    @texture.dispose
   end
 
   def disposed?
-    super or @texture.disposed?
+    super or !@texture or (@texture and @texture.disposed?)
   end
 
   attr_reader :font
@@ -58,7 +71,7 @@ class RGX::Bitmap
   end
 
   def rect
-    return Rect.new(0, 0, width, height)
+    return RGX::Rect.new(0, 0, width, height)
   end
 
   def blt(*args)
@@ -125,68 +138,159 @@ class RGX::Bitmap
       raise(ArgumentError)
     end
 
-    @texture.fill_rect(x, y, w, h, StarRuby::Color.new(0, 0, 0, 0))
+    @texture.fill_rect(x, y, w, h, SR_TRANSPARENT)
   end
 
-  def blur_n(radius=1)
-    source = @texture.dup
-    dest = @texture
-    for y in (radius)...(height - radius)
-      for x in (radius)...(width - radius)
-        scol = source[x, y]
-        for ky in (-radius)...radius
-          for kx in (-radius)...radius
-            flt = kx.abs.to_f / radius * ky.abs.to_f / radius
-            #total / (radius * 2 + 1) ^ 2
-            col = scol.to_rgx_color
-            col.red   = col.red * flt
-            col.green = col.green * flt
-            col.blue  = col.blue * flt
-            col.alpha = col.alpha * flt
-            col = col.to_starruby_color
-            dest[x + kx, y + ky] = col
-          end
-        end
+  def blur_n(n=1)
+    n.times do blur() end
+  end
+
+  def rb_blur()
+    normalize_colors = proc { |*colors|
+      col_ary = colors.inject([0, 0, 0, 0]) do |r, col|
+        r[0] += col.red
+        r[1] += col.green
+        r[2] += col.blue
+        r[3] += col.alpha
+        r
+      end
+
+      red, green, blue, alpha = col_ary
+      size = colors.size
+
+      StarRuby::Color.new(red / size, green / size, blue / size, alpha / size)
+    }
+
+    for y in 1...height
+      for x in 1...width
+        cpx = @texture[x, y]
+        lpx = @texture[x - 1, y]
+        tpx = @texture[x, y - 1]
+        rpx = normalize_colors.(cpx, lpx, tpx)
+
+        @texture[x, y] = rpx
       end
     end
-    source.dispose
+
+    for y in (height - 2).downto(0)
+      for x in (width - 2).downto(0)
+        cpx = @texture[x, y]
+        rpx = @texture[x + 1, y]
+        bpx = @texture[x, y + 1]
+        rpx = normalize_colors.(cpx, rpx, bpx)
+
+        @texture[x, y] = rpx
+      end
+    end
+
+    return self;
   end
 
-  def blur()
-    puts "fixme: Bitmap#blur"
+  # @overwrite
+  def blur
+    @texture.blur
+
+    return self;
   end
 
   def radial_blur(angle, division)
     puts "fixme: Bitmap#radial_blur"
   end
 
-  def set_pixel(x, y, rgss_color)
-    r, g, b, a = *rgss_color.as_ary
+  def set_pixel(x, y, rgx_color)
+    r, g, b, a = *rgx_color.as_ary
     @texture.render_pixel(x, y, StarRuby::Color.new(r, g, b, a))
     return true
   end
 
   def get_pixel(x, y)
     r, g, b, a = @texture[x, y].as_ary
-    return Color.new(r, g, b, a)
+    return RGX::Color.new(r, g, b, a)
   end
 
   def fill_rect(*args)
     case args.size
     # rect, color
     when 2
-      rect, rgss_color = *args
+      rect, rgx_color = *args
       x, y, w, h = rect.as_ary
-    # x, y, width, height, rgss_color
+    # x, y, width, height, rgx_color
     when 5
-      x, y, w, h, rgss_color = *args
+      x, y, w, h, rgx_color = *args
     else
       raise(ArgumentError)
     end
 
-    r, g, b, a = *rgss_color.as_ary
+    RGX::Color.type_check(rgx_color)
+
+    r, g, b, a = *rgx_color.as_ary
 
     @texture.fill_rect(x, y, w, h, StarRuby::Color.new(r, g, b, a))
+    return true
+  end
+
+  def rb_gradient_fill_rect(*args)
+    vertical = false
+    case args.size
+    # rect, color1, color2
+    when 3
+      rect, color1, color2 = *args
+      x, y, w, h = *rect.as_ary
+    # rect, color1, color2, vertical
+    when 4
+      rect, color1, color2, vertical = *args
+      x, y, w, h = *rect.as_ary
+    # x, y, width, height, color1, color2
+    when 6
+      x, y, w, h, color1, color2 = *args
+    # x, y, width, height, color1, color2, vertical
+    when 7
+      x, y, w, h, color1, color2, vertical = *args
+    else
+      raise(ArgumentError, "expected 3, 4, 6 or 7 but recieved #{args.size}")
+    end
+
+    baser = color1.red
+    baseg = color1.green
+    baseb = color1.blue
+    basea = color1.alpha
+
+    diffr = color2.red   - color1.red
+    diffg = color2.green - color1.green
+    diffb = color2.blue  - color1.blue
+    diffa = color2.alpha - color1.alpha
+
+    color = Color.new.set(color1)
+
+    if vertical
+      rF = h.to_f
+      dw, dh = w, 1
+
+      enumx = x..x
+      enumy = y...(y + h)
+      enumr = h.to_i.times
+    else
+      rF = w.to_f
+      dw, dh = 1, h
+
+      enumx = x...(x + w)
+      enumy = y..y
+      enumr = w.to_i.times
+    end
+
+    for dx in enumx
+      for dy in enumy
+        r = enumr.next / rF
+
+        color.red   = baser + diffr * r
+        color.green = baseg + diffg * r
+        color.blue  = baseb + diffb * r
+        color.alpha = basea + diffa * r
+
+        srby_color = color.to_starruby_color
+        @texture.fill_rect(dx, dy, dw, dh, srby_color)
+      end
+    end
     return true
   end
 
@@ -208,48 +312,13 @@ class RGX::Bitmap
     when 7
       x, y, w, h, color1, color2, vertical = *args
     else
-      raise(ArgumentError)
+      raise(ArgumentError, "expected 3, 4, 6 or 7 but recieved #{args.size}")
     end
 
-    baser = color1.red
-    baseg = color1.green
-    baseb = color1.blue
-    basea = color1.alpha
+    @texture.gradient_fill_rect(x, y, w, h,
+      color1.to_starruby_color, color2.to_starruby_color, vertical)
 
-    diffr = color2.red   - color1.red
-    diffg = color2.green - color1.green
-    diffb = color2.blue  - color1.blue
-    diffa = color2.alpha - color1.alpha
-
-    color = Color.new.set(color1)
-
-    color_trans = proc do |r|
-      color.red   = baser + (diffr) * r
-      color.green = baseg + (diffg) * r
-      color.blue  = baseb + (diffb) * r
-      color.alpha = basea + (diffa) * r
-      color
-    end
-
-    if vertical
-      hF = h.to_f
-
-      h.to_i.times do |iy|
-        r = iy / hF
-        srby_color = color_trans.call(r).to_starruby_color
-        @texture.fill_rect(x, y + iy, w, 1, srby_color)
-      end
-    else
-      wF = w.to_f
-
-      w.to_i.times do |ix|
-        r = ix / wF
-        srby_color = color_trans.call(r).to_starruby_color
-        @texture.fill_rect(x + ix, y, 1, h, srby_color)
-      end
-    end
-
-    return true
+    return self;
   end
 
   def draw_text(*args)
@@ -321,6 +390,39 @@ class RGX::Bitmap
 
   def hue_change(hue)
     @texture.change_hue!(hue % 360)
+  end
+
+  # RGX Patches
+  def dup
+    bmp = Bitmap.new(@texture.clone)
+    bmp.font = @font.clone
+    return bmp
+  end
+
+  alias clone dup
+
+  # RGX Extensions
+  def pallete
+    result = []
+    for y in 0...@texture.height
+      for x in 0...@texture.width
+        col_ary = @texture[x, y].as_ary
+        col_ary.map!(&:to_i)
+        result.push(col_ary) unless result.include?(col_ary)
+      end
+    end
+
+    result.replace(
+      result.sort_by do |a|
+        a.reverse
+      end
+    )
+    result.collect! do
+      |(r, g, b, a)|
+
+      RGX::Color.new(r, g, b, a)
+    end
+    return result
   end
 
 end

@@ -1,3 +1,8 @@
+#
+# src/class/sprite.rb
+#
+# vr 0.7
+
 ##
 # class Sprite
 #

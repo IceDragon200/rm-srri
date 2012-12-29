@@ -33,7 +33,7 @@ module Graphics
 
     def do_resort_z
       @drawable.replace(Graphics::Canvas.resort_z(@drawable))
-      puts "Currently Drawable: #{@drawable.size}"
+      #puts "Currently Drawable: #{@drawable.size}"
       @sorted_drawable = true
     end
 
@@ -55,16 +55,14 @@ module Graphics
       @opacity = [[n, 0].max, 255].min
     end
 
-    def draw_obj(obj)
-      obj.draw(@texture)
-    end
-
     def redraw
       do_resort_z unless @sorted_drawable
       @texture.clear
-      @drawable.each(&method(:draw_obj))
+      @drawable.each do |obj|
+        obj.draw(@texture)
+      end
       #@texture
-      self
+      return self
     end
 
     def width
@@ -82,15 +80,15 @@ module Graphics
     def add_drawable(idraw_obj)
       @drawable.push(idraw_obj)
       resort_z
-      puts "Added: #{idraw_obj}"
-      self
+      #puts "Added: #{idraw_obj}"
+      return self
     end
 
     def rem_drawable(idraw_obj)
       @drawable.delete(idraw_obj)
-      puts "Removed: #{idraw_obj}"
       resort_z
-      self
+      #puts "Removed: #{idraw_obj}"
+      return self
     end
 
     def translate(x, y)
