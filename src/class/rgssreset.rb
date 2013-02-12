@@ -1,2 +1,0 @@
-class RGSSReset < StandardError
-end
