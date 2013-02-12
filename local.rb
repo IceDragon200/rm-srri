@@ -28,8 +28,8 @@ module RGX
 
 end
 
-require_relative 'src/interfaces.rb'
-require_relative 'src/classes.rb'
-require_relative 'src/modules.rb'
-require_relative 'src/core.rb'
-require_relative 'src/game.rb'
+require_relative 'lib/interfaces.rb'
+require_relative 'lib/classes.rb'
+require_relative 'lib/modules.rb'
+require_relative 'lib/core.rb'
+require_relative 'lib/game.rb'

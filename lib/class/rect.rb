@@ -1,0 +1,3 @@
+class RGX::Rect
+
+end
