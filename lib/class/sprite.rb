@@ -1,7 +1,7 @@
 #
-# src/class/sprite.rb
+# rm-srri/lib/class/sprite.rb
 #
-# vr 0.74
+# vr 0.7.6
 
 ##
 # class Sprite
@@ -11,11 +11,11 @@
 #   blend_type
 #   src_rect
 #
-class RGX::Sprite
+class SRRI::Sprite
 
   include Interface::IDrawable
   include Interface::IDisposable
-  include Interface::IZSortable
+  include Interface::IZOrder
 
   STARRUBY_BLEND_TYPE = [
     # RGSS
@@ -24,8 +24,8 @@ class RGX::Sprite
     :sub,   # 2
 
     # StarRuby
-    :none,  # 3
-    :mask,  # 4
+    :mask,  # 3
+    :none   # -1
   ]
 
   #-// old cropping code
@@ -46,37 +46,30 @@ class RGX::Sprite
 
   def draw(texture)
     return false if @disposed
-    return false unless @bitmap
-    return false if @bitmap.disposed?
     return false unless @visible
-    return false if @opacity == 0
+    return false unless @opacity > 0
+    return false unless @zoom_x > 0
+    return false unless @zoom_y > 0
     return false unless @src_rect
-    return false if @src_rect.empty?
-    return false if @zoom_x <= 0.0
-    return false if @zoom_y <= 0.0
+    return false unless @texture
     return false if @viewport && !@viewport.visible
+    return false if @texture.disposed?
+    return false if @src_rect.empty?
 
     (@viewport || Graphics).translate(@x, @y) do |vx, vy, vrect|
       rx, ry = vx - @ox, vy - @oy
-      sx, sy, sw, sh = *@src_rect.as_ary
-      tr, tg, tb, ta = *@tone.as_ary
+      sx, sy, sw, sh = *@src_rect.to_a
 
       if @viewport
         sw *= @zoom_x if @zoom_x > 1.0
         sh *= @zoom_y if @zoom_y > 1.0
 
-        #sx2, sy2 = sx + sw, sy + sh
-        rx2 = rx + sw
-        ry2 = ry + sh
-
         # real view x, y, x2, y2
         rvx, rvy = vrect.x, vrect.y
-        rvx2, rvy2 = vrect.x + vrect.width, vrect.y + vrect.height
+        rvx2, rvy2 = rvx + vrect.width, rvy + vrect.height
 
         diffx = rx - rvx
         diffy = ry - rvy
-        diffx2 = rvx2 - rx2
-        diffy2 = rvy2 - ry2
 
         if diffx < 0
           unless @_ignore_viewport_crop
@@ -95,57 +88,127 @@ class RGX::Sprite
         end
 
         unless @_ignore_viewport_crop
-          sw += diffx2 if diffx2 < 0
-          sh += diffy2 if diffy2 < 0
+          sw += [(rvx2 - (rx + sw)), 0].min
+          sh += [(rvy2 - (ry + sh)), 0].min
 
           if @zoom_x > 1.0
             sw = (sw / @zoom_x).round
             rx += @src_rect.width / @zoom_x
           elsif @zoom_x < 1.0
-            #rx -= sw #* @zoom_x
+            #rx -= sw * @zoom_x
           end
 
           if @zoom_y > 1.0
             sh = (sh / @zoom_y).round
             ry += @src_rect.height / @zoom_y
           elsif @zoom_y < 1.0
-            #ry -= sh #* @zoom_y
+            #ry -= sh * @zoom_y
           end
         end
       end
 
-      blnd = STARRUBY_BLEND_TYPE[@blend_type]
-      ang = @angle.to_radian
-
       texture.render_texture(
-        @bitmap.texture, rx, ry,
+        @texture, rx, ry,
         center_x: @ox, center_y: @oy,
         src_x: sx, src_y: sy, src_width: sw, src_height: sh,
-        alpha: @opacity, blend_type: blnd,
+        alpha: @opacity, blend_type: STARRUBY_BLEND_TYPE[@blend_type],
         scale_x: @zoom_x, scale_y: @zoom_y,
-        angle: ang,
-        tone_red: tr, tone_green: tg, tone_blue: tb, saturation: 255 - ta
+        angle: @angle.degree_to_radian, tone: @tone, color: @color
       )
     end
   end
 
-  alias :rgx_sp_initialize :initialize
-  def initialize(*args, &block)
-    # internal
+  # PROPERTIES
+  attr_reader :x, :y, :z, :ox, :oy, :zoom_x, :zoom_y,
+              :bitmap, :src_rect, :viewport,
+              :angle, :bush_depth, :blend_type,
+              :bush_opacity, :opacity,
+              :wave_amp, :wave_speed, :wave_phase, :wave_length,
+              :mirror, :color, :tone,
+              :visible
 
-    # Until I can fix the viewport cropping for small zoomed objects
+  def initialize(viewport = nil)
+    # external
+    @viewport = viewport
+    @bitmap   = nil
+
+    @visible = true
+    @opacity = 255
+
+    @x, @y, @z = 0, 0, 0
+    @ox, @oy   = 0, 0
+    @zoom_x, @zoom_y = 1.0, 1.0
+    @angle = 0
+
+    @src_rect = SRRI::Rect.new(0, 0, 0, 0)
+
+    @color = SRRI::Color.new(0, 0, 0, 0)
+    @tone  = SRRI::Tone.new(0, 0, 0, 0)
+
+    @blend_type = 0
+
+    @disposed = false
+
+    @bush_depth   = 0
+    @bush_opacity = 0
+
+    @wave_amp    = 0
+    @wave_speed  = 0
+    @wave_phase  = 0
+    @wave_length = 0
+
     @_ignore_viewport_crop = false
-
-    rgx_sp_initialize(*args, &block)
 
     register_drawable
     setup_iz_id
   end
 
-  # IDisposable#dispose
+  def dup
+    raise(SRRI.mk_copy_error(self))
+  end
+  alias clone dup
+
   def dispose
     unregister_drawable
-    super
+    @disposed = true
+    @texture = nil
+  end
+
+  def disposed?
+    return !!@disposed
+  end
+
+  def update
+    # TODO
+    #   flash effect
+  end
+
+  ##
+  # flash(Color color, int duration)
+  #
+  def flash(color, duration)
+    return false
+  end
+
+  def width
+    @src_rect.width
+  end
+
+  def height
+    @src_rect.height
+  end
+
+  ##
+  # bitmap=(Bitmap bmp)
+  #
+  def bitmap=(bmp)
+    @bitmap = bmp
+    @src_rect = @bitmap ? @bitmap.rect : Rect.new(0, 0, 0, 0)
+    @texture = @bitmap ? @bitmap.texture : nil
+  end
+
+  def src_rect=(srect)
+    @src_rect = srect || @bitmap ? @bitmap.rect.dup : nil
   end
 
   def viewport=(view)
@@ -153,9 +216,85 @@ class RGX::Sprite
     super(@viewport)
   end
 
+  def visible=(vis)
+    @visible = !!vis
+  end
+
+  def x=(new_x)
+    @x = new_x.to_i
+  end
+
+  def y=(new_y)
+    @y = new_y.to_i
+  end
+
   def z=(new_z)
     @z = new_z.to_i
     super(@z)
+  end
+
+  def ox=(new_ox)
+    @ox = new_ox.to_i
+  end
+
+  def oy=(new_oy)
+    @oy = new_oy.to_i
+  end
+
+  def zoom_x=(new_zoom_x)
+    @zoom_x = new_zoom_x.to_f
+  end
+
+  def zoom_y=(new_zoom_y)
+    @zoom_y = new_zoom_y.to_f
+  end
+
+  def angle=(new_angle)
+    @angle = new_angle.to_i
+  end
+
+  def wave_amp=(new_wave_amp)
+    @wave_amp = new_wave_amp.to_i
+  end
+
+  def wave_amp=(new_wave_length)
+    @wave_length = new_wave_length.to_i
+  end
+
+  def wave_speed=(new_wave_speed)
+    @wave_speed = new_wave_speed.to_i
+  end
+
+  def wave_phase=(new_wave_phase)
+    @wave_phase = new_wave_phase.to_i
+  end
+
+  def mirror=(new_mirror)
+    @mirror = !!new_mirror
+  end
+
+  def bush_depth=(new_bush_depth)
+    @bush_depth = new_bush_depth.to_i
+  end
+
+  def bush_opacity=(new_bush_opacity)
+    @bush_opacity = [[new_bush_opacity.to_i, 0].max, 255].min
+  end
+
+  def opacity=(new_opacity)
+    @opacity = [[new_opacity.to_i, 0].max, 255].min
+  end
+
+  def blend_type=(new_blend_type)
+    @blend_type = new_blend_type.to_i
+  end
+
+  def color=(new_color)
+    @color = new_color
+  end
+
+  def tone=(new_tone)
+    @tone = new_tone
   end
 
 end

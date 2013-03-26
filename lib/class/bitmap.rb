@@ -1,39 +1,27 @@
 #
-# src/class/bitmap.rb
-# vr 0.83
-module StarRuby
-
-  class Texture
-
-    def rect
-      RGX::Rect.new(0, 0, width, height)
-    end
-
-  end
-
-end
-
-class RGX::Bitmap
-
-  # Transparent Color used for clearing
-  SR_TRANSPARENT = StarRuby::Color.new(255, 255, 255, 0).freeze
+# rm-srri/src/class/bitmap.rb
+# vr 1.0.0
+class SRRI::Bitmap
 
   include Interface::IDisposable
 
-  attr_accessor :texture
+  attr_accessor :texture, :font
 
   def initialize(*args)
     case args.size
     when 1 # Path
-      filename, = *args # String / Texture
-      case filename
+      obj, = *args # String / Texture
+      case obj
       when String
         # Try RTP
-        try_rtp_path(filename) do |fn|
+        SRRI.try_rtp_path(obj) do |fn|
           @texture = StarRuby::Texture.load(fn) # Texture
         end
       when StarRuby::Texture
-        @texture = filename
+        @texture = obj
+      else
+        raise(TypeError,
+              "Expected type String or StarRuby::Texture but recieved #{obj.class}")
       end
     when 2 # width, height
       width, height = *args
@@ -44,7 +32,7 @@ class RGX::Bitmap
       @texture = StarRuby::Texture.new(width, height)
     end
 
-    @font = RGX::Font.new
+    @font = SRRI::Font.new
   rescue(Exception) => ex
     @texture.dispose if @texture && !@texture.disposed?
     raise(ex)
@@ -67,6 +55,10 @@ class RGX::Bitmap
     @texture.height
   end
 
+  def rect
+    return @texture.rect
+  end
+
   def blt(*args)
     case args.size
     # x, y, bitmap, rect
@@ -80,13 +72,11 @@ class RGX::Bitmap
       raise(ArgumentError)
     end
 
-    sx, sy, sw, sh = srect.as_ary
+    sx, sy, sw, sh = srect.to_a
 
-    TextureTool.render_texture_fast(
-      @texture, tx, ty,
-      sbitmap.texture,
-      sx, sy, sw, sh,
-      opacity, 1)
+    @texture.render_texture(sbitmap.texture, tx, ty,
+                            src_x: sx, src_y: sy, src_width: sw, src_height: sh,
+                            alpha: opacity, blend_type: :alpha)
 
     return true
   end
@@ -102,8 +92,8 @@ class RGX::Bitmap
       dest_rect, src_bitmap, src_rect, opacity = *args
     end
 
-    sx, sy, sw, sh = src_rect.as_ary
-    dx, dy, dw, dh = dest_rect.as_ary
+    sx, sy, sw, sh = src_rect.to_a
+    dx, dy, dw, dh = dest_rect.to_a
 
     scale_x = dw / sw.to_f
     scale_y = dh / sh.to_f
@@ -116,7 +106,9 @@ class RGX::Bitmap
   end
 
   def clear
-    @texture.clear
+    #@texture.clear # slow
+    @texture.fill_rect(0, 0, @texture.width, @texture.height,
+                       StarRuby::Color::COLOR_TRANS)
   end
 
   def clear_rect(*args)
@@ -124,7 +116,7 @@ class RGX::Bitmap
     # rect
     when 1
       rect, = *args
-      x, y, w, h = *rect.as_ary
+      x, y, w, h = *rect.to_a
     # x, y, width, height
     when 4
       x, y, w, h = *args
@@ -132,7 +124,7 @@ class RGX::Bitmap
       raise(ArgumentError)
     end
 
-    @texture.fill_rect(x, y, w, h, SR_TRANSPARENT)
+    @texture.fill_rect(x, y, w, h, StarRuby::Color::COLOR_TRANS)
   end
 
   # @overwrite
@@ -146,52 +138,30 @@ class RGX::Bitmap
     puts "fixme: Bitmap#radial_blur"
   end
 
-  def set_pixel(x, y, rgx_color)
-    r, g, b, a = *rgx_color.as_ary
-    @texture.render_pixel(x, y, StarRuby::Color.new(r, g, b, a))
-    return true
+  def set_pixel(x, y, color)
+    @texture.render_pixel(x, y, color)
   end
 
   def get_pixel(x, y)
-    r, g, b, a = @texture[x, y].as_ary
-    return RGX::Color.new(r, g, b, a)
+    return @texture[x, y]
   end
 
   def fill_rect(*args)
     case args.size
     # rect, color
     when 2
-      rect, rgx_color = *args
-      x, y, w, h = rect.as_ary
-    # x, y, width, height, rgx_color
+      rect, color = *args
+      x, y, w, h = rect.to_a
+    # x, y, width, height, color
     when 5
-      x, y, w, h, rgx_color = *args
+      x, y, w, h, color = *args
     else
-      raise(ArgumentError)
+      raise(ArgumentError, "expected 2, or 5 but received #{args.size}")
     end
 
-    @texture.fill_rect(x, y, w, h, rgx_color.to_starruby_color)
+    @texture.fill_rect(x, y, w, h, color)
 
     return self
-  end
-
-  def blend_fill_rect(*args)
-    case args.size
-    # rect, color
-    when 2
-      rect, rgx_color = *args
-      x, y, w, h = rect.as_ary
-    # x, y, width, height, rgx_color
-    when 5
-      x, y, w, h, rgx_color = *args
-    else
-      raise(ArgumentError)
-    end
-
-    @texture.render_rect(x, y, w, h, rgx_color.to_starruby_color)
-
-    return self
-
   end
 
   def gradient_fill_rect(*args)
@@ -200,11 +170,11 @@ class RGX::Bitmap
     # rect, color1, color2
     when 3
       rect, color1, color2 = *args
-      x, y, w, h = *rect.as_ary
+      x, y, w, h = *rect.to_a
     # rect, color1, color2, vertical
     when 4
       rect, color1, color2, vertical = *args
-      x, y, w, h = *rect.as_ary
+      x, y, w, h = *rect.to_a
     # x, y, width, height, color1, color2
     when 6
       x, y, w, h, color1, color2 = *args
@@ -215,8 +185,7 @@ class RGX::Bitmap
       raise(ArgumentError, "expected 3, 4, 6 or 7 but recieved #{args.size}")
     end
 
-    @texture.gradient_fill_rect(x, y, w, h,
-      color1.to_starruby_color, color2.to_starruby_color, vertical)
+    @texture.gradient_fill_rect(x, y, w, h, color1, color2, vertical)
 
     return self;
   end
@@ -227,11 +196,11 @@ class RGX::Bitmap
     # rect, text
     when 2
       rect, text = *args
-      x, y, w, h = rect.as_ary
+      x, y, w, h = rect.to_a
     # rect, text, align
     when 3
       rect, text, align = *args
-      x, y, w, h = rect.as_ary
+      x, y, w, h = rect.to_a
     # x, y, width, height, text
     when 5
       x, y, w, h, text = *args
@@ -243,11 +212,11 @@ class RGX::Bitmap
     end
 
     text = text.to_s
-    sr_font   = @font.to_starruby_font
+    sr_font   = @font.to_strb_font
 
-    sr_shadow_color  = @font.shadow_color.to_starruby_color
-    sr_outline_color = @font.out_color.to_starruby_color
-    sr_color         = @font.color.to_starruby_color
+    sr_shadow_color  = @font.shadow_color
+    sr_outline_color = @font.out_color
+    sr_color         = @font.color
 
     if @font.exconfig[:flip_shadow_color]
       sr_color, sr_shadow_color = sr_shadow_color, sr_color
@@ -263,10 +232,10 @@ class RGX::Bitmap
 
     y += (h - th) / 2
 
-    if align == 1
+    if align == 1 # Align to Center
       x += (w - tw) / 2
     elsif align == 2
-      x += (w - tw)
+      x += (w - tw) # Align to Right
     end
 
     if @font.shadow
@@ -309,9 +278,9 @@ class RGX::Bitmap
   end
 
   def text_size(text)
-    sr_font = @font.to_starruby_font
+    sr_font = @font.to_strb_font
     w, h = *sr_font.get_size(text.to_s)
-    return Rect.new(0, 0, w, h)
+    return StarRuby::Rect.new(0, 0, w, h)
   end
 
   def hue_change(hue)
@@ -319,21 +288,19 @@ class RGX::Bitmap
     return self
   end
 
-  # RGX Patches
   def dup
-    bmp = Bitmap.new(@texture.clone)
+    bmp = SRRI::Bitmap.new(@texture.clone)
     bmp.font = @font.clone
     return bmp
   end
 
   alias clone dup
 
-  # RGX Extensions
   def pallete
     result = []
     for y in 0...@texture.height
       for x in 0...@texture.width
-        col_ary = @texture[x, y].as_ary
+        col_ary = @texture[x, y].to_a
         col_ary.map!(&:to_i)
         result.push(col_ary) unless result.include?(col_ary)
       end
@@ -347,7 +314,7 @@ class RGX::Bitmap
     result.collect! do
       |(r, g, b, a)|
 
-      RGX::Color.new(r, g, b, a)
+      StarRuby::Color.new(r, g, b, a)
     end
 
     return result

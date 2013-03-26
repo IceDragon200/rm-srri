@@ -4,7 +4,7 @@ module Graphics
   # Implement Layer system.
   class Canvas
 
-    def do_resort_z
+    def do_reorder_z
       # Group objects by #z
       # Hash<int z, IDrawable[]>
       zs = @drawable.inject({}) do |r, e|
@@ -27,7 +27,7 @@ module Graphics
       return self
     end
 
-    def resort_z
+    def reorder_z
       @sorted_drawable = false
     end
 
@@ -47,7 +47,7 @@ module Graphics
     end
 
     def redraw
-      do_resort_z unless @sorted_drawable
+      do_reorder_z unless @sorted_drawable
       #@texture.clear
       @texture.fill_rect(0, 0, @texture.width, @texture.height, @clear_color)
       #@drawable.each_with_object(@texture, &:draw)
@@ -73,14 +73,14 @@ module Graphics
 
     def add_drawable(idraw_obj)
       @drawable.push(idraw_obj)
-      resort_z
+      reorder_z
       #puts "Added: #{idraw_obj}"
       return self
     end
 
     def rem_drawable(idraw_obj)
       @drawable.delete(idraw_obj)
-      resort_z
+      reorder_z
       #puts "Removed: #{idraw_obj}"
       return self
     end

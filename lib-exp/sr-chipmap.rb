@@ -1,9 +1,7 @@
 #!/usr/bin/env ruby
 # lib-exp/sr-chipmap.rb
 # vr 1.0
-require_relative 'color-addons'
-
-class RGX::SrChipmap
+class SRRI::Chipmap
 
   class ChipmapError < StandardError
     #
@@ -11,7 +9,7 @@ class RGX::SrChipmap
 
   include Interface::IDrawable
   include Interface::IDisposable
-  include Interface::IZSortable
+  include Interface::IZOrder
 
   def draw(texture)
     return false if @disposed
@@ -24,7 +22,7 @@ class RGX::SrChipmap
       texture, @x, @y,
       @texture,
       @ox, @oy, @width, @height,
-      @opacity, 1
+      @opacity, nil, nil, 1
     )
   end
 
@@ -127,8 +125,8 @@ private
 
   def clear_tile(x, y)
     r = tile_rect(x, y)
-    @texture.fill_rect(
-      r.x, r.y, r.width, r.height, StarRuby::Color::TransparentColor)
+    @texture.fill_rect(r.x, r.y, r.width, r.height,
+                       StarRuby::Color::COLOR_TRANS)
   end
 
   def draw_tile(x, y)
@@ -141,7 +139,7 @@ private
       @texture, r.x, r.y,
       @tile_bitmap.texture,
       tr.x, tr.y, tr.width, tr.height,
-      255, 1
+      255, nil, nil, 1
     )
   end
 

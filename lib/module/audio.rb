@@ -1,7 +1,7 @@
 #
 # src/module/audio.rb
 #
-# vr 0.20
+# vr 0.2.1
 module Audio
 class << self
 
@@ -14,7 +14,7 @@ class << self
   end
 
   def se_play(filename, volume=100, pitch=100)
-    try_rtp_path(filename) do |fn|
+    SRRI.try_rtp_path(filename) do |fn|
       StarRuby::Audio.play_se(fn, volume: volume)
     end
   end
@@ -24,7 +24,7 @@ class << self
   end
 
   def bgm_play(filename, volume=100, pitch=100, pos=0)
-    try_rtp_path(filename) do |fn|
+    SRRI.try_rtp_path(filename) do |fn|
       StarRuby::Audio.play_bgm(fn, volume: volume, time: pos, loop: true)
     end
   end

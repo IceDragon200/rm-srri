@@ -1,6 +1,6 @@
-module RGX::Audio
+module SRRI::Audio
 
-  class BGM < RGX::Audio::Base
+  class BGM < SRRI::Audio::Base
 
     def self.stop
     end

@@ -1,10 +1,27 @@
 #
-# src/module/graphics.rb
-#
-# vr 0.70
+# rm-srri/lib/module/graphics.rb
+# vr 0.7.2
 require_relative 'graphics/canvas.rb'
 
 module Graphics
+
+class AlphaTransition
+
+  def self.transition(target, t1, t2, delta)
+    StarRuby::Transition.crossfade(target, t1, t2, delta)
+    #TextureTool.render_texture_fast(target, 0, 0,
+    #                                t1, 0, 0, t1.width, t1.height,
+    #                                255 - delta, nil, nil, 0) if t1 != target
+    #TextureTool.render_texture_fast(target, 0, 0,
+    #                                t2, 0, 0, t2.width, t2.height,
+    #                                delta, nil, nil, 1)
+  end
+
+  def self.dispose
+    return
+  end
+
+end
 
 class << self
 
@@ -49,29 +66,23 @@ class << self
     if @starruby.window_closing? and !@starruby.disposed?
       @starruby.dispose
       exit
-      return
     end
 
     update_fade if fading?
 
     @canvas.redraw
 
-    if @frozen_texture
-      @canvas.texture.render_texture(@frozen_texture, 0, 0,
-        alpha: 255.0 * @transition_time / @transition_time_max.to_f)
-      @transition_time -= 1
-      (@frozen_texture.dispose; @frozen_texture = nil) if @transition_time < 1
-    end
+    update_transition if @transition
 
     @frame_count += 1
 
-    @sr_font ||= Font.new.to_starruby_font
-    @sr_color ||= Font.new.color.to_starruby_color
+    #@sr_font ||= Font.new.to_strb_font
+    #@sr_color ||= Font.new.color.to_strb_color
 
-    @starruby.screen.render_text(
-      "FPS: %-04s" % @starruby.real_fps.round(2), 0, 0, @sr_font, @sr_color, true
-    )
-
+    #@starruby.screen.render_text(
+    #  "FPS: %-04s" % @starruby.real_fps.round(2), 0, 0, @sr_font, @sr_color, true
+    #)
+    @starruby.title = "FPS: %-04s" % @starruby.real_fps.round(2)
     @starruby.update_screen
     @starruby.wait
   end
@@ -96,11 +107,11 @@ class << self
 
   # Canvas
   def width
-    @width ||= RGX::DEFAULT_WIDTH
+    @width ||= SRRI::DEFAULT_WIDTH
   end
 
   def height
-    @height ||= RGX::DEFAULT_HEIGHT
+    @height ||= SRRI::DEFAULT_HEIGHT
   end
 
   def brightness
@@ -143,11 +154,12 @@ class << self
     @fade_time = @fade_time_max = frames.to_i
   end
 
-  def freeze
-    @frozen_texture.dispose if @freeze_texture
+  def freeze_screen
+    dispose_transition
     @frozen_texture = @canvas.texture.clone
+    @transition = AlphaTransition #@frozen_texture.to_transition
 
-    @transition_time = 0
+    @transition_time = -1
     @transition_time_max = 1
   end
 
@@ -168,20 +180,55 @@ class << self
       duration, filename, vague = *args
     end
 
-    @transition_time = @transition_time_max = duration.to_i
+    unless @transition
+      return
+      #raise(StandardError, "Cannot transition without an active @transition")
+    end
 
-    # if the transition time is 0 (instant) just dispose the texture
-    (@frozen_texture.dispose; @frozen_texture = nil) if @transition_time_max < 1
+    @transition_time = 0
+    @transition_time_max = duration.to_i
   end
 
-private
+  def transition_rate
+    delta = @transition_time > -1 ? @transition_time : 0.0
+    delta / @transition_time_max.to_f
+  end
+
+  def update_transition
+    delta = transition_rate
+    t0 = @canvas.texture
+    t1 = @frozen_texture
+    t2 = @canvas.texture
+    #t2 = @canvas.texture.dup
+
+    #t0.clear
+    @transition.transition(t0, t1, t2, 0xFF * delta)
+    #t2.dispose
+
+    return if @transition_time == -1
+
+    @transition_time += 1
+
+    dispose_transition if @transition_time >= @transition_time_max
+  end
+
+  def dispose_transition
+    @frozen_texture.dispose if @freeze_texture
+    @transition.dispose if @transition
+    @frozen_texture = nil
+    @transition = nil
+  end
+
+  def frozen_screen?
+    !!@frozen_texture
+  end
 
   def transition?
-    return @transition_time > 0
+    @transition_time > 0
   end
 
   def fading?
-    return @fade_time > 0
+    @fade_time > 0
   end
 
   def update_fade
@@ -192,5 +239,9 @@ private
   end
 
 end # class << self
+
+  def self.freeze(*args, &block)
+    freeze_screen(*args, &block)
+  end
 
 end

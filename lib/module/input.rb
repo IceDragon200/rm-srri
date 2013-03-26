@@ -108,14 +108,14 @@ public
 
   def sr_repeat?(device, *syms)
     #has_key?(keys(device, 1, 7, 7), *syms)
-    has_key?(keys(device, 1, 13, 11), *syms)
+    has_key?(keys(device, 1, 10, 10), *syms)
   end
 
   def sr_press?(device, *syms)
     has_key?(keys(device, 1, 1, 0), *syms)
   end
 
-  # Wrapper for RGX (RGSS2/3)
+  # Wrapper for SRRI (RGSS2/3)
   def trigger?(sym)
     sr_trigger?(:keyboard, *correct_key(sym))
   end

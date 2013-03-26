@@ -1,6 +1,6 @@
-module RGX::Audio
+module SRRI::Audio
 
-  class SE < RGX::Audio::Base
+  class SE < SRRI::Audio::Base
 
     def play
       Audio.se_play(@filename, @volume, @pitch)

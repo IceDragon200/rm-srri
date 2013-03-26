@@ -1,16 +1,11 @@
 #
-# src/class/window.rb
-#
-# vr 0.83
-
-##
-# RGX::Window
-#
-class RGX::Window
+# rm-srri/lib/class/window.rb
+# vr 1.0.0
+class SRRI::Window
 
   include Interface::IDrawable
   include Interface::IDisposable
-  include Interface::IZSortable
+  include Interface::IZOrder
 
   def draw(texture)
     return false if @disposed
@@ -29,11 +24,13 @@ class RGX::Window
       pad, pad2 = @padding, @padding * 2
 
       # ContentBackground
-      tr, tg, tb, ta = @tone.as_ary
+      tr, tg, tb, ta = @tone.to_a
       ay, ax = 0, 0
       #scale_x = @openness / 255.0
+      openness_rate = @openness / 255.0
+      xopacity_rate = 1.0 #openness_rate
       scale_x = 1.0
-      scale_y = @openness / 255.0
+      scale_y = openness_rate
       #ax = ((@width / 2.0) * (1 - scale_x)).to_i if scale_x != 1.0
       ay = ((@height / 2.0) * (1 - scale_y)).to_i if scale_y != 1.0
 
@@ -62,7 +59,7 @@ class RGX::Window
           @_texture_content_background, dx, dy,
           src_x: sx, src_y: sy, src_width: sw, src_height: sh,
           tone_red: tr, tone_green: tg, tone_blue: tb, saturation: 255 - ta,
-          alpha: @back_opacity * (@opacity / 255.0),
+          alpha: @back_opacity * (@opacity / 255.0) * xopacity_rate,
           scale_x: scale_x, scale_y: scale_y
         )
       end
@@ -83,13 +80,13 @@ class RGX::Window
             texture, dx, dy,
             @_texture_window_skin,
             sx, sy, sw, sh,
-            @opacity, 1
+            @opacity * xopacity_rate, nil, nil, 1
           )
         else
           texture.render_texture(
             @_texture_window_skin, dx, dy,
             src_x: sx, src_y: sy, src_width: sw, src_height: sh,
-            alpha: @opacity,
+            alpha: @opacity * xopacity_rate,
             scale_x: scale_x, scale_y: scale_y
           )
         end
@@ -112,7 +109,7 @@ class RGX::Window
           texture, cdx, cdy,
           @_cursor_texture,
           0, 0, @_cursor_texture.width, @_cursor_texture.height,
-          @_cursor_opacity, 1
+          @_cursor_opacity * xopacity_rate, nil, nil, 1
         )
       end
 
@@ -142,14 +139,14 @@ class RGX::Window
           texture, dx, dy,
           @contents.texture,
           sx, sy, sw, sh,
-          @contents_opacity, 1
+          @contents_opacity * xopacity_rate, nil, nil, 1
         )
       else
         texture.render_texture(
           @contents.texture, dx, dy,
           src_x: sx, src_y: sy, src_width: sw, src_height: sh,
-          alpha: @contents_opacity,
-          # RGX Behaviour
+          alpha: @contents_opacity * xopacity_rate,
+          # SRRI Behaviour
           scale_x: scale_x, scale_y: scale_y
         )
       end
@@ -341,14 +338,39 @@ private
 
 public
 
-  alias :rgx_initialize :initialize
-  def initialize(*args, &block)
-    # internal
+  def initialize(x, y, w, h)
+    @x, @y, @width, @height = x.to_i, y.to_i, w.to_i, h.to_i
+
+    @ox, @oy = 0, 0
+    @z = 0
+
+    @padding = 12
+    @padding_bottom = 0
+
+    @opacity          = 255
+    @back_opacity     = 255
+    @contents_opacity = 255
+
+    @openness = 255
+
+    @visible       = true
+    @active        = true
+    @arrows_visible = true
+    @pause         = false
+
+    # Custom Objects
+    @tone        = SRRI::Tone.new(0, 0, 0, 0)
+    @cursor_rect = SRRI::Rect.new(0, 0, 0, 0)
+    @viewport    = nil
+
+    # Bitmap
+    @contents    = SRRI::Bitmap.new(1, 1)
+    @windowskin  = nil
+
+    @_cursor_ticks = 0
+    @_cursor_opacity = 255
+
     @_looped_background = false
-
-    # alias
-    rgx_initialize(*args, &block)
-
     # internal
     remake_window
     redraw_window
@@ -358,7 +380,19 @@ public
     setup_iz_id
   end
 
-  alias :rgx_dispose :dispose
+  def dup
+    raise(SRRI.mk_copy_error(self))
+  end
+  alias clone dup
+
+  attr_reader :x, :y, :z, :ox, :oy, :width, :height,
+              :openness, :padding, :padding_bottom,
+              :opacity, :back_opacity, :contents_opacity,
+              :contents, :windowskin, :viewport,
+              :cursor_rect,
+              :active, :arrows_visible, :pause, :visible,
+              :tone
+
   def dispose
     @_texture_window_skin.dispose if @_texture_window_skin
     @_texture_content_background.dispose if @_texture_content_background
@@ -366,13 +400,54 @@ public
 
     unregister_drawable
 
-    rgx_dispose()
+    @disposed = true
   end
 
-  alias :rgx_move :move
-  def move(*args, &block)
-    rgx_move(*args, &block)
-    trash_window()
+  def disposed?
+    return !!@disposed
+  end
+
+  def update
+    update_cursor_state
+  end
+
+  # default
+  def update_cursor_state
+    if active
+      @_cursor_ticks += 1
+      # Pulse
+      if @_cursor_ticks % 30 < 15
+        @_cursor_opacity = 128 + 128 * (@_cursor_ticks % 15) / 15.0
+      else
+        @_cursor_opacity = 255 - 128 * (@_cursor_ticks % 15) / 15.0
+      end
+    else
+      @_cursor_opacity = 128
+    end
+  end
+
+  def open?
+    @openness == 255
+  end
+
+  def close?
+    @openness == 0
+  end
+
+  def windowskin=(new_windowskin)
+    @windowskin = new_windowskin
+  end
+
+  def contents=(new_contents)
+    @contents = new_contents
+  end
+
+  def x=(new_x)
+    @x = new_x.to_i
+  end
+
+  def y=(new_y)
+    @y = new_y.to_i
   end
 
   def z=(new_z)
@@ -380,19 +455,84 @@ public
     super(@z)
   end
 
+  def ox=(new_ox)
+    @ox = new_ox.to_i
+  end
+
+  def oy=(new_oy)
+    @oy = new_oy.to_i
+  end
+
   def width=(new_width)
-    @width = new_width
-    trash_window()
+    @width = new_width.to_i
+    trash_window
   end
 
   def height=(new_height)
-    @height = new_height
-    trash_window()
+    @height = new_height.to_i
+    trash_window
   end
 
   def viewport=(new_viewport)
     @viewport = new_viewport
     super(@viewport)
+  end
+
+  def cursor_rect=(new_rect)
+    @cursor_rect = new_rect
+  end
+
+  def move(x, y, w, h)
+    @x = x.to_i
+    @y = y.to_i
+    @width = w.to_i
+    @height = h.to_i
+
+    trash_window
+  end
+
+  def openness=(new_openness)
+    @openness = [[new_openness.to_i, 0].max, 255].min
+  end
+
+  def tone=(new_tone)
+    @tone = new_tone
+  end
+
+  def opacity=(new_opacity)
+    @opacity = [[new_opacity.to_i, 0].max, 255].min
+  end
+
+  def back_opacity=(new_back_opacity)
+    @back_opacity = [[new_back_opacity.to_i, 0].max, 255].min
+  end
+
+  def contents_opacity=(new_contents_opacity)
+    @contents_opacity = [[new_contents_opacity.to_i, 0].max, 255].min
+  end
+
+  def padding=(new_padding)
+    @padding = new_padding.to_i
+  end
+
+  def padding_bottom=(new_padding_bottom)
+    @padding_bottom = new_padding_bottom.to_i
+  end
+
+  def active=(new_active)
+    @active = !!new_active
+  end
+
+  def visible=(new_visible)
+    @visible = !!new_visible
+  end
+
+  def arrows_visible=(new_arrows_visible)
+    @arrows_visible = !!new_arrows_visible
+  end
+
+  def pause=(new_pause)
+    @pause = !!new_pause
   end
 
 end

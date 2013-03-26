@@ -1,2 +1,1 @@
-class RGX::Tone
-end
+SRRI::Tone = StarRuby::Tone

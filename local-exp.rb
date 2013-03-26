@@ -1,8 +1,8 @@
 #
 # rm-srri/local-exp.rb
-# vr 0.1
+# vr 1.0.0
 #   SRRI Expansion
-
-#
-require_relative 'lib-exp/sr-sprite'
-require_relative 'lib-exp/sr-chipmap'
+%w(sr-sprite sr-chipmap bitmap-addons sr-cairobitmap
+   texture-cairo-init texture-transition).each do |fn|
+  require File.join(File.dirname(__FILE__), 'lib-exp', fn)
+end

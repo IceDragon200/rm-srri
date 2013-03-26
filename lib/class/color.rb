@@ -1,45 +1,12 @@
-module RGX
+#
+# rm-srri/lib/class/color.rb
+# vr 1.0.1
+SRRI::Color = StarRuby::Color
 
-  class Color
+class SRRI::Color
 
-  # Addon
-    def as_hash
-      {
-        red: red,
-        green: green,
-        blue: blue,
-        alpha: alpha
-      }
-    end
-
-    def to_rgx_color
-      RGX::Color.new(red, green, blue, alpha)
-    end
-
-    def to_starruby_color
-      StarRuby::Color.new(red, green, blue, alpha)
-    end
-
-  end
-
-end
-
-module StarRuby
-
-  class Color
-
-    def as_ary
-      return [red, green, blue, alpha]
-    end
-
-    def to_rgx_color
-      RGX::Color.new(red, green, blue, alpha)
-    end
-
-    def to_starruby_color
-      StarRuby::Color.new(red, green, blue, alpha)
-    end
-
-  end
+  COLOR_TRANS = new(0, 0, 0, 0).freeze
+  COLOR_BLACK = new(0, 0, 0, 255).freeze
+  COLOR_WHITE = new(255, 255, 255, 255).freeze
 
 end

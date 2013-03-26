@@ -1,4 +1,4 @@
-module RGX::Audio
+module SRRI::Audio
 
   class Base
 

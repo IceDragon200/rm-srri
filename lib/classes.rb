@@ -1,22 +1,9 @@
 #
-# src/classes.rb
-#
-require_relative 'class/table.rb'
-require_relative 'class/rect.rb'
-
-require_relative 'class/color.rb'
-require_relative 'class/tone.rb'
-
-require_relative 'class/font.rb'
-
-require_relative 'class/bitmap.rb'
-
-require_relative 'class/viewport.rb'
-
-require_relative 'class/sprite.rb'
-require_relative 'class/plane.rb'
-require_relative 'class/tilemap.rb'
-require_relative 'class/window.rb'
-
-require_relative 'class/rgsserror.rb'
-require_relative 'class/rgssreset.rb'
+# rm-srri/lib/classes.rb
+# vr 2.0.0
+dir = File.dirname(__FILE__)
+%w(rgsserror rgssreset
+   bitmap color font plane rect
+   sprite table tilemap tone viewport window).each do |fn|
+  require File.join(dir, 'class', fn)
+end

@@ -1,16 +1,16 @@
 #
 # src/class/plane.rb
 #
-# vr 0.83
+# vr 0.8.4
 
 ##
 # class Plane
 #
-class RGX::Plane
+class SRRI::Plane
 
   include Interface::IDrawable
   include Interface::IDisposable
-  include Interface::IZSortable
+  include Interface::IZOrder
 
   def draw(texture)
     return false unless @bitmap
@@ -39,9 +39,6 @@ class RGX::Plane
 
       src_texture = @bitmap.texture
 
-      tr, tg, tb, ta = @tone.as_ary
-      ta = 255 if tr == 0 and tg == 0 and tb == 0
-
       return if vw <= 0 || vh <= 0
 
       tw = ((vw / src_texture.width).ceil + 2) * src_texture.width
@@ -51,16 +48,10 @@ class RGX::Plane
         @_texture.width != tw || @_texture.height != th)
 
       if @_texture_changed
-
         @_texture.dispose if @_texture and !@_texture.disposed?
-
         @_texture = StarRuby::Texture.new(tw, th)
-
-        TextureTool.loop_texture(
-          @_texture, RGX::Rect.new(0, 0, tw, th),
-          src_texture, src_texture.rect
-        )
-
+        TextureTool.loop_texture(@_texture, Rect.new(0, 0, tw, th),
+                                 src_texture, src_texture.rect)
         @_texture_changed = false
       end
 
@@ -71,19 +62,38 @@ class RGX::Plane
         alpha: @opacity,
         blend_type: Sprite::STARRUBY_BLEND_TYPE[@blend_type],
         scale_x: @zoom_x, scale_y: @zoom_y,
-        tone_red: tr, tone_green: tg, tone_blue: tb, saturation: ta
+        tone: @tone, color: @color
       )
 
     end
   end
 
-  alias :rgx_pln_initialize :initialize
-  def initialize(*args, &block)
+  attr_reader :z, :ox, :oy,
+            :zoom_x, :zoom_y,
+            :bitmap, :viewport,
+            :visible, :opacity,
+            :blend_type,
+            :color, :tone
+
+  def initialize(viewport=nil)
+    @viewport = viewport
+    @bitmap = nil
+    @ox, @oy, @z = 0, 0, 0
+
+    @opacity = 255
+
+    @zoom_x, @zoom_y = 1.0, 1.0
+
+    @visible = true
+
+    @blend_type = 0
+
+    @tone  = SRRI::Tone.new(0, 0, 0, 0)
+    @color = SRRI::Color.new(0, 0, 0, 0)
+
     @_texture = nil
     @_last_ox, @_last_oy = 0, 0
     @_texture_changed = true
-
-    rgx_pln_initialize(*args, &block)
 
     register_drawable
     setup_iz_id
@@ -92,12 +102,15 @@ class RGX::Plane
   def dispose
     @_texture.dispose if @_texture and not @_texture.disposed?
     unregister_drawable
-    super
+    @disposed = true
   end
 
-  alias :rgx_plan_bitmap_set :bitmap=
+  def disposed?
+    return !!@disposed
+  end
+
   def bitmap=(new_bitmap)
-    rgx_plan_bitmap_set(new_bitmap)
+    @bitmap = new_bitmap
     @_texture_changed = true
   end
 
@@ -107,9 +120,45 @@ class RGX::Plane
     super(@viewport)
   end
 
+  def visible=(vis)
+    @visible = !!vis
+  end
+
   def z=(new_z)
     @z = new_z.to_i
     super(@z)
+  end
+
+  def ox=(new_ox)
+    @ox = new_ox.to_i
+  end
+
+  def oy=(new_oy)
+    @oy = new_oy.to_i
+  end
+
+  def zoom_x=(new_zoom_x)
+    @zoom_x = new_zoom_x.to_f
+  end
+
+  def zoom_y=(new_zoom_y)
+    @zoom_y = new_zoom_y.to_f
+  end
+
+  def opacity=(new_opacity)
+    @opacity = new_opacity.to_i
+  end
+
+  def blend_type=(new_blend_type)
+    @blend_type = new_blend_type.to_i
+  end
+
+  def color=(new_color)
+    @color = new_color
+  end
+
+  def tone=(new_tone)
+    @tone = new_tone
   end
 
 end

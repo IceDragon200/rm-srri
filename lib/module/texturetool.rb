@@ -35,7 +35,7 @@ module TextureTool
 
   def self.loop_texture(texture, trg_rect, src_texture, src_rect)
     vx, vy = trg_rect.x, trg_rect.y
-    sx, sy, w, h = src_rect.as_ary
+    sx, sy, w, h = src_rect.to_a
 
     xloop, xrem = trg_rect.width.divmod(w)
     yloop, yrem = trg_rect.height.divmod(h)
@@ -45,7 +45,7 @@ module TextureTool
         render_texture_fast(
           texture, vx + (dx * w), vy + (dy * h),
           src_texture, sx, sy, w, h,
-          255, 1)
+          255, nil, nil, 1)
       end
     end
 
@@ -54,7 +54,7 @@ module TextureTool
         render_texture_fast(
           texture, vx + (xloop * w), vy + (dy * h),
           src_texture, sx, sy, xrem, h,
-          255, 1)
+          255, nil, nil, 1)
       end
     end
 
@@ -63,7 +63,7 @@ module TextureTool
         render_texture_fast(
           texture, vx + (dx * w), vy + (yloop * h),
           src_texture, sx, sy, w, yrem,
-          255, 1)
+          255, nil, nil, 1)
       end
     end
 
@@ -71,16 +71,9 @@ module TextureTool
     render_texture_fast(
       texture, vx + (xloop * w), vy + (yloop * h),
       src_texture, sx, sy, xrem, yrem,
-      255, 1) if xrem > 0 && yrem > 0
+      255, nil, nil, 1) if xrem > 0 && yrem > 0
 
     return true
   end
 
 end
-
-__END__
-  VALUE klass,
-  VALUE rbDstTexture, VALUE rbDstX, VALUE rbDstY,
-  VALUE rbSrcTexture,
-  VALUE rbSrcX, VALUE rbSrcY, VALUE rbSrcWidth, VALUE rbSrcHeight,
-  VALUE rbAlpha, VALUE rbBlendType

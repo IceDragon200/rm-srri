@@ -1,4 +1,4 @@
-class RGX::Bitmap
+class SRRI::Bitmap
 
   def rb_gradient_fill_rect(*args)
     vertical = false
@@ -58,8 +58,7 @@ class RGX::Bitmap
         color.blue  = baseb + diffb * r
         color.alpha = basea + diffa * r
 
-        srby_color = color.to_starruby_color
-        @texture.fill_rect(dx, dy, dw, dh, srby_color)
+        @texture.fill_rect(dx, dy, dw, dh, color)
       end
     end
 

@@ -1,11 +1,11 @@
 #
-# src/sr-sprite.rb
-# vr 0.10
-class RGX::SrSprite
+# rm-srri/lib-exp/sr-sprite.rb
+# vr 1.0.0
+class SRRI::SoftSprite
 
   include Interface::IDrawable
   include Interface::IDisposable
-  include Interface::IZSortable
+  include Interface::IZOrder
 
   def draw(texture)
     return false if @disposed
@@ -18,13 +18,13 @@ class RGX::SrSprite
       texture, @x, @y,
       @texture,
       0, 0, @texture.width, @texture.height,
-      @opacity, 1
+      @opacity, nil, nil, 1
     )
   end
 
   attr_reader :opacity, :bitmap, :x, :y, :z, :visible
 
-  def initialize(viewport)
+  def initialize(_=nil)
     @bitmap = nil
     @x, @y, @z = 0, 0, 0
     @opacity = 255
