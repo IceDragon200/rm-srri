@@ -1,5 +1,5 @@
 # RM-SRRI : RM - StarRuby Interface
-## Version 0.70
+## Version 0.7.0
 
 ## Introduction
 ```

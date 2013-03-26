@@ -1,12 +1,12 @@
 #
 # rm-srri/lib/srri.rb
-# vr 2.0.0
+# vr 0.7.0
 module SRRI
 
   class CopyError < RuntimeError
   end
 
-  VERSION = "2.0.0".freeze
+  VERSION = "0.7.0".freeze
 
   def self.mk_copy_error(obj)
     return CopyError.new("Cannot copy #{obj}")
