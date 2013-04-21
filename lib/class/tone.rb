@@ -1,1 +1,0 @@
-SRRI::Tone = StarRuby::Tone
