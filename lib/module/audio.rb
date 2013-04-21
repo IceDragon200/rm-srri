@@ -2,6 +2,7 @@
 # src/module/audio.rb
 #
 # vr 0.2.1
+module SRRI
 module Audio
 class << self
 
@@ -14,26 +15,31 @@ class << self
   end
 
   def se_play(filename, volume=100, pitch=100)
+    return unless StarRuby::HAS_AUDIO
     SRRI.try_rtp_path(filename) do |fn|
       StarRuby::Audio.play_se(fn, volume: volume)
     end
   end
 
   def se_stop
+    return unless StarRuby::HAS_AUDIO
     StarRuby::Audio.stop_all_ses
   end
 
   def bgm_play(filename, volume=100, pitch=100, pos=0)
+    return unless StarRuby::HAS_AUDIO
     SRRI.try_rtp_path(filename) do |fn|
       StarRuby::Audio.play_bgm(fn, volume: volume, time: pos, loop: true)
     end
   end
 
   def bgm_stop
+    return unless StarRuby::HAS_AUDIO
     StarRuby::Audio.stop_bgm
   end
 
   def bgm_pos
+    return unless StarRuby::HAS_AUDIO
     StarRuby::Audio.bgm_position
   end
 
@@ -62,6 +68,7 @@ class << self
   def me_fade(time)
   end
 
+end
 end
 end
 

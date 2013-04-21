@@ -1,12 +1,14 @@
 #
 # rm-srri/lib/srri.rb
-# vr 0.7.0
 module SRRI
 
   class CopyError < RuntimeError
   end
 
-  VERSION = "0.7.0".freeze
+  class SRRIBreak < Interrupt
+  end
+
+  VERSION = "0.7.1".freeze
 
   def self.mk_copy_error(obj)
     return CopyError.new("Cannot copy #{obj}")
@@ -35,6 +37,7 @@ module SRRI
     fullscreen: false,
     vsync: false
   }
+  @@current_game = nil
 
   def self.rtp_path
     return @@rtp_path
@@ -49,34 +52,49 @@ module SRRI
     end
   end
 
-  def self.mk_starruby()
-    Graphics.starruby.close_window if Graphics.starruby
-    game = StarRuby::Game.new(
+  def self.dispose_starruby
+    Graphics.starruby = nil
+    Input.starruby    = nil
+    @@current_game.dispose unless @@current_game.disposed?
+    @@current_game = nil
+  end
+
+  def self.kill_starruby
+    dispose_starruby
+    raise(SRRI::SRRIBreak)
+  end
+
+  def self.mk_starruby
+    dispose_starruby if @@current_game
+    @@current_game = StarRuby::Game.new(
       Graphics.width,
       Graphics.height,
       cursor:     @@config[:cursor],
       fps:        @@config[:frame_rate],
       title:      @@config[:title],
       fullscreen: @@config[:fullscreen],
-      vsync: @@config[:vsync]
+      vsync:      @@config[:vsync]
     )
-
-    Graphics.starruby = game
+    Graphics.starruby = @@current_game
+    Input.starruby    = @@current_game
+    return @@current_game
   end
 
 end
 
 def rgss_main
   SRRI.mk_starruby
-  Graphics.init
-  Audio.init
-  Input.init
+  SRRI::Graphics.init
+  SRRI::Audio.init
+  SRRI::Input.init
 
   begin
     yield
-  rescue RGSSReset
+  rescue SRRI::RGSSReset
     Graphics._reset
     retry
+  rescue SRRI::SRRIBreak
+
   end
 end
 

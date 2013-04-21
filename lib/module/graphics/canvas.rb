@@ -1,4 +1,4 @@
-module Graphics
+module SRRI::Graphics
 
   # TODO:
   # Implement Layer system.
@@ -83,6 +83,14 @@ module Graphics
       reorder_z
       #puts "Removed: #{idraw_obj}"
       return self
+    end
+
+    def clear
+      @drawable.each(&:dispose)
+      @drawable.clear
+      @texture.clear
+      reorder_z
+      self
     end
 
     def translate(x, y)

@@ -1,31 +1,27 @@
 #
-# src/interface/iviewport.rb
-#
+# rm-srri/lib/interface/iviewport.rb
+#   by IceDragon
+#   dc ??/??/2012
+#   dm 29/03/2013
+# vr 1.0.2
+module SRRI
 module Interface
-  module IViewport
+module IViewport
 
-    include Interface::IDrawable
-    include Interface::IZSortable
-    include Interface::IDisposable
-
-private
-    def canvas
-      return (viewport || Graphics.canvas)
-    end
+  include SRRI::Interface::IDrawable
+  include SRRI::Interface::IZOrder
+  include SRRI::Interface::IDisposable
 
 public
 
-    def viewport=(new_viewport)
-      if @_last_viewport != new_viewport
-        canvas.resort_z # tell the old viewport that it needs refreshing
-        unregister_drawable # drop from old viewport
-        @viewport = new_viewport
-        @_last_viewport = @viewport
-        register_drawable # add to new viewport
-        canvas.resort_z # tell the new viewport that it needs refreshing
-      end
+  def viewport=(new_viewport)
+    if @_last_viewport != new_viewport
+      unregister_drawable
+      @viewport = new_viewport ; @_last_viewport = @viewport
+      register_drawable
     end
-
   end
-end
 
+end
+end
+end

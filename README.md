@@ -59,3 +59,10 @@ Viewport, Sprite
 - CaptainJet (https://github.com/CaptainJet)
 - StarRuby (https://github.com/hajimehoshi/starruby)
 - Enterbrain
+
+## Changes
+29/03/2013
+  Moved all Interfaces under the SRRI module
+27/03/2013
+  Fixed fps being nil in Graphics, if it wasn't initialized
+

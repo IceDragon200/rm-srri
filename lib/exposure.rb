@@ -1,6 +1,6 @@
 #
 # rm-srri/lib/exposure.rb
-# vr 1.0.0
+# vr 1.1.0
 
 Object.const_set(:Bitmap,    SRRI.const_get(:Bitmap))
 Object.const_set(:Color,     SRRI.const_get(:Color))
@@ -15,4 +15,8 @@ Object.const_set(:Tilemap,   SRRI.const_get(:Tilemap))
 Object.const_set(:Tone,      SRRI.const_get(:Tone))
 Object.const_set(:Viewport,  SRRI.const_get(:Viewport))
 Object.const_set(:Window,    SRRI.const_get(:Window))
+
+Object.const_set(:Audio,     SRRI.const_get(:Audio))
+Object.const_set(:Graphics,  SRRI.const_get(:Graphics))
+Object.const_set(:Input,     SRRI.const_get(:Input))
 

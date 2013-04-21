@@ -3,23 +3,20 @@
 # vr 1.0.0
 class SRRI::SoftSprite
 
-  include Interface::IDrawable
-  include Interface::IDisposable
-  include Interface::IZOrder
+  include SRRI::Interface::IDrawable
+  include SRRI::Interface::IDisposable
+  include SRRI::Interface::IZOrder
 
-  def draw(texture)
+  def draw(buffer)
     return false if @disposed
     return false unless @texture
     return false if @texture.disposed?
     return false unless @visible
     return false if @opacity <= 0
 
-    TextureTool.render_texture_fast(
-      texture, @x, @y,
-      @texture,
-      0, 0, @texture.width, @texture.height,
-      @opacity, nil, nil, 1
-    )
+    buffer.render_texture(@texture, @x, @y,
+                          src_rect: @texture.rect, alpha: @opacity,
+                          blend_type: :alpha)
   end
 
   attr_reader :opacity, :bitmap, :x, :y, :z, :visible

@@ -1,21 +1,25 @@
 #
-# src/module/input.rb
-# 1.16
+# rm-srri/lib/module/input.rb
+# 1.1.6
+module SRRI
 module Input
 class << self
 
+  attr_accessor :starruby
+
   def init
+    #
   end
 
   INPUT_TABLE = {
-    A: :a,
-    B: [:s, :escape],
-    C: [:d, :enter],
-    X: :z,
-    Y: :x,
-    Z: :c,
-    L: :q,
-    R: :w,
+    A:     :a,
+    B:     [:s, :escape],
+    C:     [:d, :enter],
+    X:     :z,
+    Y:     :x,
+    Z:     :c,
+    L:     :q,
+    R:     :w,
     LEFT:  :left,
     RIGHT: :right,
     UP:    :up,
@@ -23,14 +27,13 @@ class << self
     SHIFT: :lshiftkey,
     CTRL:  :lcontrolkey,
     ALT:   :lmenu,
-
-    F5: :f5,
-    F6: :f6,
-    F7: :f7,
-    F8: :f8,
-    F9: :f9,
-    F10: :f10,
-    F11: :f11
+    F5:    :f5,
+    F6:    :f6,
+    F7:    :f7,
+    F8:    :f8,
+    F9:    :f9,
+    F10:   :f10,
+    F11:   :f11
   }
 
   INPUT_TABLE.each_pair do |key, value|
@@ -43,8 +46,8 @@ private
   end
 
   def keys(device, dur=0, del=-1, int=-1)
-    return StarRuby::Input.keys(
-      device, duration: dur, delay: del, interval: int)
+    return StarRuby::Input.keys(device,
+                                duration: dur, delay: del, interval: int)
   end
 
   def dirs
@@ -52,7 +55,7 @@ private
   end
 
   def has_key?(keys, *want)
-    return want.any? do |k| keys.include?(k) end
+    return want.any? { |k| keys.include?(k) }
   end
 
 public
@@ -65,40 +68,30 @@ public
   def dir4
     keys = dirs()
 
-    if keys.include?(:down)
-      return 2
-    elsif keys.include?(:left)
-      return 4
-    elsif keys.include?(:right)
-      return 6
-    elsif keys.include?(:up)
-      return 8
-    else
-      return 0
+    if    keys.include?(:down)  then 2
+    elsif keys.include?(:left)  then 4
+    elsif keys.include?(:right) then 6
+    elsif keys.include?(:up)    then 8
+    else                      return 0
     end
   end
 
   def dir8
     keys = dirs()
 
-    if keys.include?(:down) and keys.include?(:left)
-      return 1
-    elsif keys.include?(:down) and keys.include?(:right)
-      return 3
-    elsif keys.include?(:up) and keys.include?(:left)
-      return 7
-    elsif keys.include?(:up) and keys.include?(:right)
-      return 9
-    elsif keys.include?(:down)
-      return 2
-    elsif keys.include?(:left)
-      return 4
-    elsif keys.include?(:right)
-      return 6
-    elsif keys.include?(:up)
-      return 8
-    else
-      return 0
+    if    keys.include?(:down) and
+          keys.include?(:left)     then 1
+    elsif keys.include?(:down) and
+          keys.include?(:right)    then 3
+    elsif keys.include?(:up)   and
+          keys.include?(:left)     then 7
+    elsif keys.include?(:up)   and
+          keys.include?(:right)    then 9
+    elsif keys.include?(:down)     then 2
+    elsif keys.include?(:left)     then 4
+    elsif keys.include?(:right)    then 6
+    elsif keys.include?(:up)       then 8
+    else                         return 0
     end
   end
 
@@ -129,9 +122,12 @@ public
   end
 
   def update
-    Graphics.starruby.update_state # Input closing etc..etc..
-    return self
+    return false unless @starruby
+    return false if @starruby.disposed?
+    return SRRI.kill_starruby if @starruby.window_closing?
+    @starruby.update_state
   end
 
 end # class << self
+end
 end

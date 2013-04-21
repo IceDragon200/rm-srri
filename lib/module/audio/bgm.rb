@@ -15,7 +15,7 @@ module SRRI::Audio
     end
 
     def stop
-      @pos = RPG::BGM.pos
+      @pos = StarRuby::Audio.bgm_pos
       @@last = self
       Audio.bgm_stop
     end

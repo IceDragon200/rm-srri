@@ -1,15 +1,18 @@
-#!/usr/bin/env ruby
-# lib-exp/sr-chipmap.rb
-# vr 1.0
+#
+# rm-srri/lib-exp/sr-chipmap.rb
+#   by IceDragon
+#   dc ??/??/2012
+#   dm 29/03/2013
+# vr 1.0.1
 class SRRI::Chipmap
 
   class ChipmapError < StandardError
     #
   end
 
-  include Interface::IDrawable
-  include Interface::IDisposable
-  include Interface::IZOrder
+  include SRRI::Interface::IDrawable
+  include SRRI::Interface::IDisposable
+  include SRRI::Interface::IZOrder
 
   def draw(texture)
     return false if @disposed

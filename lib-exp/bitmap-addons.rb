@@ -50,4 +50,20 @@ class SRRI::Bitmap
     self
   end
 
+  ##
+  # crop(int x, int y, int w, int h)
+  # crop(rect)
+  def crop(*args)
+    case args.size
+    # rec
+    when 1
+      rect, = args
+      x, y, w, h = rect.to_a
+    # x, y, width, height, color
+    when 4
+      x, y, w, h = *args
+    end
+    Bitmap.new(@texture.crop(x, y, w, h))
+  end
+
 end

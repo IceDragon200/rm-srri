@@ -1,20 +1,14 @@
 #
 # rm-srri/lib/module/graphics.rb
-# vr 0.7.2
+# vr 0.7.2.001
 require_relative 'graphics/canvas.rb'
-
+module SRRI
 module Graphics
 
 class AlphaTransition
 
   def self.transition(target, t1, t2, delta)
     StarRuby::Transition.crossfade(target, t1, t2, delta)
-    #TextureTool.render_texture_fast(target, 0, 0,
-    #                                t1, 0, 0, t1.width, t1.height,
-    #                                255 - delta, nil, nil, 0) if t1 != target
-    #TextureTool.render_texture_fast(target, 0, 0,
-    #                                t2, 0, 0, t2.width, t2.height,
-    #                                delta, nil, nil, 1)
   end
 
   def self.dispose
@@ -38,18 +32,17 @@ class << self
   end
 
   def _reset
-    @canvas.drawable.each(&:dispose)
-    @canvas.drawable.clear
+    @canvas.clear
     @frame_count = 0
   end
 
   def rect
-    return @rect ||= Rect.new(0, 0, width, height)
+    return @rect ||= SRRI::Rect.new(0, 0, width, height)
   end
 
   def init
     @frame_count = 0
-    @canvas = Canvas.new(@starruby.screen)
+    @canvas = SRRI::Graphics::Canvas.new(@starruby.screen)
 
     @fade_time, @fade_time_max = 0, 1
     @target_brightness = 255
@@ -61,27 +54,14 @@ class << self
   end
 
   def update
-    return unless @starruby
-
-    if @starruby.window_closing? and !@starruby.disposed?
-      @starruby.dispose
-      exit
-    end
+    return false unless @starruby
+    return false if @starruby.disposed?
+    return SRRI.kill_starruby if @starruby.window_closing?
 
     update_fade if fading?
-
     @canvas.redraw
-
     update_transition if @transition
-
     @frame_count += 1
-
-    #@sr_font ||= Font.new.to_strb_font
-    #@sr_color ||= Font.new.color.to_strb_color
-
-    #@starruby.screen.render_text(
-    #  "FPS: %-04s" % @starruby.real_fps.round(2), 0, 0, @sr_font, @sr_color, true
-    #)
     @starruby.title = "FPS: %-04s" % @starruby.real_fps.round(2)
     @starruby.update_screen
     @starruby.wait
@@ -97,7 +77,7 @@ class << self
   end
 
   def frame_rate
-    @starruby ? @starruby.fps : @fps
+    @starruby ? @starruby.fps : @fps ||= 60
   end
 
   def frame_rate=(n)
@@ -127,11 +107,11 @@ class << self
   def resize_screen(new_width, new_height)
     @width, @height = new_width.to_i, new_height.to_i
     # Trigger resize if the window is currently open
-    Game.mk_starruby() if @starruby
+    SRRI.mk_starruby if @starruby
   end
 
   def snap_to_bitmap
-    bmp = Bitmap.new(width, height)
+    bmp = SRRI::Bitmap.new(width, height)
     bmp.texture.render_texture(@canvas.texture, 0, 0)
     bmp
   end
@@ -156,7 +136,7 @@ class << self
 
   def freeze_screen
     dispose_transition
-    @frozen_texture = @canvas.texture.clone
+    @frozen_texture = @canvas.texture.dup
     @transition = AlphaTransition #@frozen_texture.to_transition
 
     @transition_time = -1
@@ -191,7 +171,7 @@ class << self
 
   def transition_rate
     delta = @transition_time > -1 ? @transition_time : 0.0
-    delta / @transition_time_max.to_f
+    delta / [@transition_time_max, 1].max.to_f
   end
 
   def update_transition
@@ -244,4 +224,5 @@ end # class << self
     freeze_screen(*args, &block)
   end
 
+end
 end
