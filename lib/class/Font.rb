@@ -79,6 +79,10 @@ end
     return @@font_cache[args]
   end
 
+  def self.clear_cache
+    @@font_cache.clear
+  end
+
   def self.search_font(fontname, ext)
     @font_paths.each do |basepath|
       path = File.join(basepath, fontname + ext)

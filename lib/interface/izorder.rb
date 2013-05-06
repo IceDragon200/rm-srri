@@ -25,9 +25,9 @@ public
   end
 
   def z=(new_z)
-    if @_last_z != @z
+    if @_last_z != new_z
       Graphics.canvas.reorder_z
-      @_last_z = @z
+      @_last_z = @z = new_z
     end
   end
 
@@ -36,9 +36,11 @@ public
   end
 
   def viewport=(new_viewport)
-    if @_last_viewport != @viewport
+    if @_last_viewport != new_viewport
+      unregister_drawable # unregister
+      @_last_viewport = @viewport = new_viewport
+      register_drawable # re-register
       Graphics.canvas.reorder_z
-      @_last_viewport = @viewport
     end
   end
 

@@ -15,41 +15,49 @@ class << self
   end
 
   def se_play(filename, volume=100, pitch=100)
-    return unless StarRuby::HAS_AUDIO
-    SRRI.try_rtp_path(filename) do |fn|
+    return false unless StarRuby::HAS_AUDIO
+    SRRI.find_path(filename) do |fn|
       StarRuby::Audio.play_se(fn, volume: volume)
     end
+    return true
   end
 
   def se_stop
-    return unless StarRuby::HAS_AUDIO
+    return false unless StarRuby::HAS_AUDIO
     StarRuby::Audio.stop_all_ses
+    return true
   end
 
   def bgm_play(filename, volume=100, pitch=100, pos=0)
-    return unless StarRuby::HAS_AUDIO
-    SRRI.try_rtp_path(filename) do |fn|
+    return false unless StarRuby::HAS_AUDIO
+    SRRI.find_path(filename) do |fn|
       StarRuby::Audio.play_bgm(fn, volume: volume, time: pos, loop: true)
     end
+    return true
   end
 
   def bgm_stop
-    return unless StarRuby::HAS_AUDIO
+    return false unless StarRuby::HAS_AUDIO
     StarRuby::Audio.stop_bgm
+    return true
   end
 
   def bgm_pos
-    return unless StarRuby::HAS_AUDIO
+    return false unless StarRuby::HAS_AUDIO
     StarRuby::Audio.bgm_position
+    return true
   end
 
   def bgm_fade(time)
+    return false
   end
 
   def bgs_play(filename, volume=100, pitch=100, pos=0)
+    return false
   end
 
   def bgs_stop
+    return false
   end
 
   def bgs_pos
@@ -57,15 +65,19 @@ class << self
   end
 
   def bgs_fade(time)
+    return false
   end
 
   def me_play(filename, volume=100, pitch=100)
+    return false
   end
 
   def me_stop
+    return false
   end
 
   def me_fade(time)
+    return false
   end
 
 end

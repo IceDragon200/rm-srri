@@ -1,6 +1,447 @@
 #
 # rm-srri/lib/class/tilemap.rb
 # vr 1.0.0
+# Fomar0153's tilemap
+class SRRI::Tilemap
+
+  include SRRI::Interface::IViewport
+
+  #--------------------------------------------------------------------------
+  # * Constants
+  #--------------------------------------------------------------------------
+  TILESIZE = 32
+  #--------------------------------------------------------------------------
+  # * Class Variables
+  #--------------------------------------------------------------------------
+  @@flash_cache = {}
+  #--------------------------------------------------------------------------
+  # * Public Instance Variables
+  #--------------------------------------------------------------------------
+  attr_accessor :bitmaps
+  attr_reader   :map_data
+  attr_reader   :flash_data
+  attr_accessor :flags
+  attr_reader   :viewport
+  attr_accessor :visible
+  attr_reader   :ox
+  attr_reader   :oy
+  #--------------------------------------------------------------------------
+  # * Object Initialization
+  #--------------------------------------------------------------------------
+  def initialize(viewport = nil)
+    @bitmaps = []
+    @visible = true
+    @ox = 0
+    @oy = 0
+    @animated_layer = []
+    @layers = Array.new(5) { Sprite.new }
+    @anim_count = 0
+    @_disposed = false
+    @layers[0].z = 0
+    @layers[1].z = 100
+    @layers[2].z = 200
+    # Shadow Layer
+    @layers[3].z = 201
+    # Flash Layer (More like static Color)
+    @layers[4].z = 202
+    @layers[4].blend_type = 1
+
+    register_drawable
+    setup_iz_id
+
+    self.viewport = viewport
+  end
+
+  def z
+    0
+  end
+
+  #--------------------------------------------------------------------------
+  # * Viewport Assign
+  #--------------------------------------------------------------------------
+  def viewport=(new_viewport)
+    super(new_viewport)
+    for layer in @layers
+      layer.viewport = @viewport
+    end
+  end
+
+  #--------------------------------------------------------------------------
+  # * Free
+  #--------------------------------------------------------------------------
+  def dispose
+    super
+    for layer in @layers
+      layer.bitmap.dispose if layer.bitmap && !layer.bitmap.disposed?
+      layer.dispose
+    end
+    for layer in @animated_layer
+      layer.dispose unless layer.disposed?
+    end
+  end
+
+  #--------------------------------------------------------------------------
+  # * Frame Update
+  #--------------------------------------------------------------------------
+  def update
+    @anim_count = (@anim_count + 1) % (@animated_layer.size * 30)
+    @layers[0].bitmap = @animated_layer[@anim_count/30]
+    #@layers[4].opacity = 0x80 + 0x7F * @anim_count / 30.0
+  end
+  #--------------------------------------------------------------------------
+  # * Refresh
+  #--------------------------------------------------------------------------
+  def refresh
+    return if @map_data.nil? || @flags.nil?
+    for layer in @layers
+      layer.bitmap.dispose if layer.bitmap && !layer.bitmap.disposed?
+      layer.bitmap = nil
+    end
+    draw_animated_layer
+    draw_upper_layers
+    draw_shadow_layer
+    refresh_flash_data
+  end
+  #--------------------------------------------------------------------------
+  # * Refresh Flash Data
+  #--------------------------------------------------------------------------
+  def refresh_flash_data
+    @layers[4].bitmap.dispose if @layers[4].bitmap && !@layers[4].bitmap.disposed?
+    draw_flash_layer
+  end
+  #--------------------------------------------------------------------------
+  # * Draw Animated Layer
+  #--------------------------------------------------------------------------
+  def draw_animated_layer
+    bitmap = Bitmap.new(@map_data.xsize * TILESIZE, @map_data.ysize * TILESIZE)
+    if need_animated_layer?
+      @animated_layer = [bitmap, bitmap.dup, bitmap.dup]
+    else
+      @animated_layer = [bitmap]
+    end
+    @layers[0].bitmap = @animated_layer[0]
+    for x in 0..@map_data.xsize - 1
+      for y in 0..@map_data.ysize - 1
+        draw_A1tile(x,y,@map_data[x,y,0],true) if @map_data[x,y,0].between?(2048,2815)
+        draw_A2tile(x,y,@map_data[x,y,0]) if @map_data[x,y,0].between?(2816,4351)
+        draw_A3tile(x,y,@map_data[x,y,0]) if @map_data[x,y,0].between?(4352,5887)
+        draw_A4tile(x,y,@map_data[x,y,0]) if @map_data[x,y,0].between?(5888,8191)
+        draw_A5tile(x,y,@map_data[x,y,0]) if @map_data[x,y,0].between?(1536,1663)
+      end
+    end
+
+    for x in 0..@map_data.xsize - 1
+      for y in 0..@map_data.ysize - 1
+        draw_A1tile(x,y,@map_data[x,y,1],true) if @map_data[x,y,1].between?(2048,2815)
+        draw_A2tile(x,y,@map_data[x,y,1]) if @map_data[x,y,1].between?(2816,4351)
+
+
+      end
+    end
+
+  end
+
+  #--------------------------------------------------------------------------
+  # * Draws A1 Tiles
+  #--------------------------------------------------------------------------
+  def bitmap_for_autotile(autotile)
+    return 0 if autotile.between?(0,15)
+    return 1 if autotile.between?(16,47)
+    return 2 if autotile.between?(48,79)
+    return 3 if autotile.between?(80,127)
+  end
+  #--------------------------------------------------------------------------
+  # * Draws A1 Tiles
+  #--------------------------------------------------------------------------
+  A1 = [
+    [13,14,17,18], [2,14,17,18],  [13,3,17,18],  [2,3,17,18],
+    [13,14,17,7],  [2,14,17,7],   [13,3,17,7],   [2,3,17,7],
+    [13,14,6,18],  [2,14,6,18],   [13,3,6,18],   [2,3,6,18],
+    [13,14,6,7],   [2,14,6,7],    [13,3,6,7],    [2,3,6,7],
+    [12,14,16,18], [12,3,16,18],  [12,14,16,7],  [12,3,16,7],
+    [9,10,17,18],  [9,10,17,7],   [9,10,6,18],   [9,10,6,7],
+    [13,15,17,19], [13,15,6,19],  [2,15,17,19],  [2,15,6,19],
+    [13,14,21,22], [2,14,21,22],  [13,3,21,22],  [2,3,21,22],
+    [12,15,16,19], [9,10,21,22],  [8,9,12,13],   [8,9,12,7],
+    [10,11,14,15], [10,11,6,15],  [18,19,22,23], [2,19,22,23],
+    [16,17,20,21], [16,3,20,21],  [8,11,12,15],  [8,9,20,21],
+    [16,19,20,23], [10,11,22,23], [8,11,20,23],  [0,1,4,5]
+  ]
+  A1POS = [
+  [0,0],[0,TILESIZE*3],[TILESIZE*6,0],[TILESIZE*6,TILESIZE*3],
+  [TILESIZE*8,0],[TILESIZE*14,0],[TILESIZE*8,TILESIZE*3],[TILESIZE*14,TILESIZE*3],
+  [0,TILESIZE*6],[TILESIZE*6,TILESIZE*6],[0,TILESIZE*9],[TILESIZE*6,TILESIZE*9],
+  [TILESIZE*8,TILESIZE*6],[TILESIZE*14,TILESIZE*6],[TILESIZE*8,TILESIZE*9],[TILESIZE*14,TILESIZE*9]
+  ]
+  def draw_A1tile(x,y,id,animated = false)
+    autotile = (id - 2048) / 48
+    return draw_waterfalltile(x,y,id) if [5,7,9,11,13,15].include?(autotile)
+    index = (id - 2048) % 48
+    case bitmap_for_autotile(autotile)
+    when 0
+      x2 = A1POS[autotile][0]
+      y2 = A1POS[autotile][1]
+    when 1
+      x2 = (TILESIZE * 2) * ((autotile - 16) % 8)
+      y2 = (TILESIZE * 3) * ((autotile - 16) / 8)
+    when 2
+      x2 = (TILESIZE * 2) * ((autotile - 48) % 8)
+      y2 = (TILESIZE * 2) * ((autotile - 48) / 8)
+    when 3
+      x2 = (TILESIZE * 2) * ((autotile - 80) % 8)
+      y2 = (TILESIZE * 3) * ((((autotile - 80) / 8)+1)/2) + (TILESIZE * 2) * (((autotile - 80) / 8)/2)
+    end
+
+    rect = Rect.new(0,0,TILESIZE/2,TILESIZE/2)
+
+    for layer in @animated_layer
+      for i in 0..3
+        rect.x = x2 + (TILESIZE/2) * (A1[index][i] % 4)
+        rect.y = y2 + (TILESIZE/2) * (A1[index][i] / 4)
+        case i
+        when 0
+          layer.blt(x * TILESIZE, y * TILESIZE,@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 1
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE,@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 2
+          layer.blt(x * TILESIZE, y * TILESIZE + (TILESIZE/2),@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 3
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE + (TILESIZE/2),@bitmaps[bitmap_for_autotile(autotile)],rect)
+        end
+      end
+      x2 += TILESIZE * 2 if animated && ![2,3].include?(autotile)
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draws Waterfall Tiles
+  #--------------------------------------------------------------------------
+  A1E = [
+  [0,1,6,7],[0,1,4,5],[2,3,6,7],[1,2,5,6]
+  ]
+  def draw_waterfalltile(x,y,id)
+    autotile = (id - 2048) / 48
+    index = (id - 2048) % 48
+      x2 = A1POS[autotile][0]
+      y2 = A1POS[autotile][1]
+
+    rect = Rect.new(0,0,TILESIZE/2,TILESIZE/2)
+
+    for layer in @animated_layer
+      for i in 0..3
+        rect.x = x2 + (TILESIZE/2) * (A1E[index][i] % 4)
+        rect.y = y2 + (TILESIZE/2) * (A1E[index][i] / 4)
+        case i
+        when 0
+          layer.blt(x * TILESIZE, y * TILESIZE,@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 1
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE,@bitmaps[0],rect)
+        when 2
+          layer.blt(x * TILESIZE, y * TILESIZE + (TILESIZE/2),@bitmaps[0],rect)
+        when 3
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE + (TILESIZE/2),@bitmaps[0],rect)
+        end
+      end
+      y2 += TILESIZE
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draws A2 Tiles
+  #--------------------------------------------------------------------------
+  def draw_A2tile(x,y,id)
+    draw_A1tile(x,y,id)
+  end
+  #--------------------------------------------------------------------------
+  # * Draws A3 Tiles
+  #--------------------------------------------------------------------------
+  A3 = [
+    [5,6,9,10],    [4,5,8,9],    [1,2,5,6],   [0,1,4,5],
+    [6,7,10,11],   [4,7,8,11],   [2,3,6,7],   [0,3,4,7],
+    [9,10,13,14],  [8,9,12,13],  [1,2,13,14], [0,1,12,13],
+    [10,11,14,15], [8,11,12,13], [2,3,14,15], [0,3,12,15]
+    ]
+  def draw_A3tile(x,y,id)
+    autotile = (id - 2048) / 48
+    index = (id - 2048) % 48
+    case bitmap_for_autotile(autotile)
+    when 0
+      x2 = (TILESIZE * 2) * ((autotile) % 8)
+      y2 = (TILESIZE * 3) * ((autotile) / 8)
+    when 1
+      x2 = (TILESIZE * 2) * ((autotile - 16) % 8)
+      y2 = (TILESIZE * 3) * ((autotile - 16) / 8)
+    when 2
+      x2 = (TILESIZE * 2) * ((autotile - 48) % 8)
+      y2 = (TILESIZE * 2) * ((autotile - 48) / 8)
+    when 3
+      x2 = (TILESIZE * 2) * ((autotile - 80) % 8)
+      y2 = (TILESIZE * 3) * ((((autotile - 80) / 8)+1)/2) + (TILESIZE * 2) * (((autotile - 80) / 8)/2)
+    end
+
+    rect = Rect.new(0,0,TILESIZE/2,TILESIZE/2)
+
+    for layer in @animated_layer
+      for i in 0..3
+        if A3[index].nil?
+          rect.x = x2 + (TILESIZE/2) * (A1[index][i] % 4)
+          rect.y = y2 + (TILESIZE/2) * (A1[index][i] / 4)
+        else
+          rect.x = x2 + (TILESIZE/2) * (A3[index][i] % 4)
+          rect.y = y2 + (TILESIZE/2) * (A3[index][i] / 4)
+        end
+        case i
+        when 0
+          layer.blt(x * TILESIZE, y * TILESIZE,@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 1
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE,@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 2
+          layer.blt(x * TILESIZE, y * TILESIZE + (TILESIZE/2),@bitmaps[bitmap_for_autotile(autotile)],rect)
+        when 3
+          layer.blt(x * TILESIZE + (TILESIZE/2), y * TILESIZE + (TILESIZE/2),@bitmaps[bitmap_for_autotile(autotile)],rect)
+        end
+      end
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draws A4 Tiles
+  #--------------------------------------------------------------------------
+  def draw_A4tile(x,y,id)
+    autotile = (id - 2048) / 48
+    case autotile
+    when 80..87
+      draw_A1tile(x,y,id)
+    when 96..103
+      draw_A1tile(x,y,id)
+    when 112..119
+      draw_A1tile(x,y,id)
+    else
+      draw_A3tile(x,y,id)
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draws A5 Tiles
+  #--------------------------------------------------------------------------
+  def draw_A5tile(x,y,id)
+    id -= 1536
+    rect = Rect.new(TILESIZE * (id % 8),TILESIZE * ((id % 128) / 8),TILESIZE,TILESIZE)
+    for layer in @animated_layer
+      layer.blt(x * TILESIZE, y * TILESIZE,@bitmaps[4],rect)
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Check if animated layer needed
+  #--------------------------------------------------------------------------
+  def need_animated_layer?
+    for x in 0..@map_data.xsize - 1
+      for y in 0..@map_data.ysize - 1
+        if @map_data[x,y,0].between?(2048, 2815)
+          return true
+        end
+      end
+    end
+    return false
+  end
+  #--------------------------------------------------------------------------
+  # * Draw Upper Layers
+  #--------------------------------------------------------------------------
+  def draw_upper_layers
+    bitmap = Bitmap.new(@map_data.xsize * TILESIZE, @map_data.ysize * TILESIZE)
+    @layers[1].bitmap = bitmap
+    @layers[2].bitmap = bitmap.dup
+    rect = Rect.new(0,0,TILESIZE,TILESIZE)
+    for x in 0..@map_data.xsize - 1
+      for y in 0..@map_data.ysize - 1
+        n = @map_data[x, y, 2] % 0x100
+        rect.x = TILESIZE * ((n % 8) + (8 * (n / 128)))
+        rect.y = TILESIZE * ((n % 128) / 8)
+        if @flags[@map_data[x,y,2]] & 0x10 == 0
+          @layers[1].bitmap.blt(x * TILESIZE, y * TILESIZE,@bitmaps[5+@map_data[x,y,2]/256],rect)
+        else
+          @layers[2].bitmap.blt(x * TILESIZE, y * TILESIZE,@bitmaps[5+@map_data[x,y,2]/256],rect)
+        end
+      end
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draw Shadow Layer
+  #--------------------------------------------------------------------------
+  def draw_shadow_layer
+    return false
+    bitmap = Bitmap.new(@map_data.xsize * TILESIZE, @map_data.ysize * TILESIZE)
+    @layer[3].bitmap = bitmap
+    shadow_color = Color.new(0, 0, 0, 0x80)
+    for x in 0...@map_data.xsize
+      for y in 0...@map_data.ysize
+        shadowbit = @map_data[x, y, 3]
+        #bitmap.fill_rect(32 * x, 32 * y, 16, 16, shadow_color)
+      end
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Draw Flash Layer
+  #--------------------------------------------------------------------------
+  def draw_flash_layer
+    return unless @flash_data
+    bitmap = Bitmap.new(@map_data.xsize * TILESIZE, @map_data.ysize * TILESIZE)
+    @layers[4].bitmap = bitmap
+    for x in 0...@flash_data.xsize
+      for y in 0...@flash_data.ysize
+        rgb12 = @flash_data[x, y] & 0xFFF
+        color = (@@flash_cache[rgb12] ||= Color.new(((rgb12 >> 8) & 0xF) * 0x11,
+                                                    ((rgb12 >> 4) & 0xF) * 0x11,
+                                                    ((rgb12 >> 0) & 0xF) * 0x11))
+        bitmap.fill_rect(32 * x, 32 * y, 32, 32, color)
+      end
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Set Map Data
+  #--------------------------------------------------------------------------
+  def map_data=(data)
+    return if @map_data == data
+    @map_data = data
+    #for x in 0..@map_data.xsize - 1
+    #  for y in 0..@map_data.ysize - 1
+    #    #p @map_data[x,y,2]
+    #  end
+    #end
+    refresh
+  end
+  #--------------------------------------------------------------------------
+  # * Set Flash Data
+  #--------------------------------------------------------------------------
+  def flash_data=(data)
+    return if @flash_data == data
+    @flash_data = data
+    refresh_flash_data
+  end
+  #--------------------------------------------------------------------------
+  # * Set Map Data
+  #--------------------------------------------------------------------------
+  def flags=(data)
+    @flags = data
+    refresh
+  end
+  #--------------------------------------------------------------------------
+  # * Set ox
+  #--------------------------------------------------------------------------
+  def ox=(value)
+    @ox = value
+    for layer in @layers
+      layer.ox = @ox
+    end
+  end
+  #--------------------------------------------------------------------------
+  # * Set oy
+  #--------------------------------------------------------------------------
+  def oy=(value)
+    @oy = value
+    for layer in @layers
+      layer.oy = @oy
+    end
+  end
+end
+
+__END__
 class SRRI::Tilemap
 
   include SRRI::Interface::IViewport
@@ -102,410 +543,3 @@ public
   end
 
 end
-
-__END__
-# TilesetExport!
-# // Started : 07/13/2011
-# // Modified: 07/14/2011
-# // Waterfalls need to be coded properly
-
-# // Credit to FenixFyreX
-module TilesetRanges
-
-  # A1
-  A1 = [
-    [0,(2048...2096)],[1,(2096...2144)],[1,(2144...2192)],[1,(2192...2240)],
-    [0,(2240...2288)],[0,(2288...2336)],[0,(2336...2384)],[0,(2384...2432)],
-    [0,(2432...2480)],[0,(2480...2528)],[0,(2528...2576)],[0,(2576...2624)],
-    [0,(2624...2672)],[0,(2672...2720)],[0,(2720...2768)],[0,(2768...2816)]
-  ]
-  # A2
-  A2_1 = [
-    [0,(2816...2864)],[1,(2864...2912)],[1,(2912...2960)],[0,(2960...3008)],
-    [1,(3008...3056)],[1,(3056...3104)],[0,(3104...3152)],[0,(3152...3200)]
-  ]
-  A2_2 = [
-    [0,(3200...3248)],[1,(3248...3296)],[1,(3296...3344)],[0,(3344...3392)],
-    [1,(3392...3440)],[1,(3440...3488)],[0,(3488...3536)],[0,(3536...3584)]
-  ]
-  A2_3 = [
-    [0,(3584...3632)],[1,(3632...3680)],[1,(3680...3728)],[0,(3728...3776)],
-    [1,(3776...3824)],[1,(3824...3872)],[0,(3872...3920)],[0,(3920...3968)]
-  ]
-  A2_4 = [
-    [0,(3968...4016)],[1,(4016...4064)],[1,(4064...4112)],[0,(4112...4160)],
-    [1,(4160...4208)],[1,(4208...4256)],[0,(4256...4304)],[0,(4304...4352)]
-  ]
-   A2 = A2_1 + A2_2 + A2_3 + A2_4
-   # A3
-   A3 = []
-  for i in 0...32
-    n = 4352 + (48*i)
-    n2 = n+48
-    A3 << [0,n...n2]
-  end
-   # A4
-   A4 = []
-  for i in 0...48
-    n = 5888 + (48*i)
-    n2 = n+48
-    A4 << [0,n...n2]
-  end
-   # A5
-   A5 = []
-  for i in 1536...1664
-    A5 << [0,i...i+1]
-  end
-   # B
-   B = []
-  for i in 0...256
-    B << [2,i...i+1]
-  end
-   # C
-   C = []
-  for i in 256...512
-    C << [2,i...i+1]
-  end
-   # D
-   D = []
-  for i in 512...768
-    D << [2,i...i+1]
-  end
-   # E
-
-  E = []
-  for i in 768...1024
-    E << [2,i...i+1]
-  end
-
-  # // IceDragon Bit
-  A = A1 + A2 + A3 + A4 + A5
-
-  AA= A.collect { |e| e[1] }
-
-end
- # // IceDragon
-module ISS ; end
-module ISS::TilemapSettings
-
-  Vector2 = Struct.new(:p1, :p2)
-
-  TILESIZE          = Vector2.new(32, 32)
-  SEGMENT_SIZE      = Vector2.new(16, 16)
-  AUTOTILE_SIZE1    = Vector2.new(64, 96)
-  AUTOTILE_SIZE2    = Vector2.new(64, 64)
-  # // 64x96
-  AUTOTILE_SEGMENTS = [
-    [19, 18, 15, 14],
-    [ 3, 18, 15, 14],
-    [19,  4, 15, 14],
-    [ 3,  4, 15, 14],
-    [19, 18, 15,  8],
-    [ 3, 18, 15,  8],
-    [19,  4, 15,  8],
-    [ 3,  4, 15,  8],
-    [19, 18,  7, 14],
-    [ 3, 18,  7, 14],
-    [19,  4,  7, 14],
-    [ 3,  4,  7, 14],
-    [19, 18,  7,  8],
-    [ 3, 18,  7,  8],
-    [19,  4,  7,  8],
-    [ 3,  4,  7,  8],
-    [17, 18, 13, 14],
-    [17,  4, 13, 14],
-    [17, 18, 13,  8],
-    [17,  4, 13,  8],
-    [11, 10, 15, 14],
-    [11, 10, 15,  8],
-    [11, 10,  7, 14],
-    [11, 10,  7,  8],
-    [19, 20, 15, 16],
-    [19, 20,  7, 16],
-    [ 3, 20, 15, 16],
-    [ 3, 20,  7, 16],
-    [19, 18, 23, 22],
-    [ 3, 18, 23, 22],
-    [19,  4, 23, 22],
-    [ 3,  4, 23, 22],
-    [17, 20, 13, 16],
-    [11, 10, 23, 22],
-    [ 9, 10, 13, 14],
-    [ 9, 10, 13,  8],
-    [11, 12, 15, 16],
-    [11, 12,  7, 16],
-    [19, 20, 23, 24],
-    [ 3, 20, 23, 24],
-    [17, 18, 21, 22],
-    [17,  4, 21, 22],
-    [ 9, 12, 13, 16],
-    [ 9, 10, 21, 22],
-    [17, 20, 21, 24],
-    [11, 12, 23, 24],
-    [ 9, 12, 21, 24],
-    [ 1,  2,  5,  6]
-  ]
-
-  # // 64x64
-  AUTOTILE_SEGMENTS2 = [
-    [11, 10,  7,  6],
-    [ 9, 10,  5,  6],
-    [ 3,  2,  7,  6],
-    [ 1,  2,  5,  6],
-    [11, 12,  7,  8],
-    [ 9, 12,  5,  8],
-    [ 3,  4,  7,  8],
-    [ 1,  4,  5,  8],
-    [11, 10, 15, 14],
-    [ 9, 10, 13, 14],
-    [ 3,  2, 15, 14],
-    [ 1,  2, 13, 14],
-    [11, 12, 15, 16],
-    [ 9, 12, 13, 16],
-    [ 3,  4, 15, 16],
-    [ 1,  4, 13, 16],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1],
-    [ 1,  1,  1,  1]
-  ]
-
-  # // Fix Offset
-  for i in 0...AUTOTILE_SEGMENTS.size
-    for i2 in 0...4
-      AUTOTILE_SEGMENTS[i][i2] -= 1
-    end
-  end
-
-  for i in 0...AUTOTILE_SEGMENTS2.size
-    for i2 in 0...4
-      AUTOTILE_SEGMENTS2[i][i2] -= 1
-    end
-  end
-
-  PARENT_TILE = []
-
-  # // Setup Parent Tiles for B to E
-  for i in 0...1024
-    PARENT_TILE[i] = i
-  end
-
-  # // Setup Parent Tiles for A1 to A5
-  for a1_set in TilesetRanges::AA
-    pa = a1_set.to_a[0]
-    for i in a1_set
-      PARENT_TILE[i] = pa
-    end
-  end
-
-  # // Redo A5
-  TilesetRanges::A5.each { |a5_set| a5_set.each { |e| PARENT_TILE[e] = e } }
-
-  # // Setup Autotile Indexes
-  AUTOTILE_INDEX = []
-
-  16.times { |i|
-    AUTOTILE_INDEX[2048+(48*i)] = [0, i] # A1 [tileset_id, tileset_index]
-  }
-
-  32.times { |i|
-    AUTOTILE_INDEX[2816+(48*i)] = [1, i] # A2 [tileset_id, tileset_index]
-    AUTOTILE_INDEX[4352+(48*i)] = [2, i] # A3 [tileset_id, tileset_index]
-  }
-
-  48.times { |i|
-    AUTOTILE_INDEX[5888+(48*i)] = [3, i] # A4 [tileset_id, tileset_index]
-  }
-   A4_TILE_POSITIONS = Array.new(56)
-  at1w, at1h = AUTOTILE_SIZE1.p1, AUTOTILE_SIZE1.p2
-  at2w, at2h = AUTOTILE_SIZE2.p1, AUTOTILE_SIZE2.p2
-
-  8.times { |i|
-  # // Roofs
-    A4_TILE_POSITIONS[i]    = Vector2.new(i*at1w, 0)
-    A4_TILE_POSITIONS[i+16] = Vector2.new(i*at1w, at1h+at2h)
-    A4_TILE_POSITIONS[i+32] = Vector2.new(i*at1w, (at1h*2)+(at2h*2))
-  # // Walls
-    A4_TILE_POSITIONS[i+8]  = Vector2.new(i*at1h, at1h)
-    A4_TILE_POSITIONS[i+24] = Vector2.new(i*at1h, (at1h*2)+at2h)
-    A4_TILE_POSITIONS[i+40] = Vector2.new(i*at1h, (at1h*3)+(at2h*2))
-  }
-
-  module_function()
-
-  def get_segment_set(tile_id)
-    case tileset_family(tile_id)
-    when :a3
-      return AUTOTILE_SEGMENTS2[tile_id-PARENT_TILE[tile_id]]
-    when :a4
-      tileset, index = *AUTOTILE_INDEX[PARENT_TILE[tile_id]]
-      roof = (index / 8) % 2 == 0
-      return AUTOTILE_SEGMENTS[tile_id-PARENT_TILE[tile_id]] if roof
-      return AUTOTILE_SEGMENTS2[tile_id-PARENT_TILE[tile_id]]
-    else
-      return AUTOTILE_SEGMENTS[tile_id-PARENT_TILE[tile_id]]
-    end
-  end
-
-  def get_autotile_bit( xo, yo, bitmap, tile_bit )
-    bitm = Bitmap.new(SEGMENT_SIZE.p1, SEGMENT_SIZE.p2)
-    rect = Rect.new(
-     SEGMENT_SIZE.p1*(tile_bit%4)+xo, SEGMENT_SIZE.p2*(tile_bit/4)+yo, # // x, y
-     SEGMENT_SIZE.p1, SEGMENT_SIZE.p2) # // width, height
-    bitm.blt(0, 0, bitmap, rect)
-    return bitm
-  end
-
-  def tileset_family(tile_id)
-    case tile_id
-    when 0...1024            ; return :be
-    when 2048...2816         ; return :a1
-    when 2816...4352         ; return :a2
-    when 4352...5888         ; return :a3
-    when 5888...8192         ; return :a4
-    when 1536...1664         ; return :a5
-    end
-  end
-
-  def anim_autotile?( tile_id, type )
-    case type
-    when 0 # // Normal
-      case tile_id
-      when 2048...2096, 2144...2192, 2240...2288, 2336...2384, 2432...2480,
-       2528...2576, 2624...2672, 2720...2768
-        return true
-      end
-    when 1 # // Waterfall
-      case tile_id
-      when 2288...2336, 2384...2432, 2480...2528, 2576...2624,
-       2672...2720, 2768...2816
-        return true
-      end
-    end
-    return false
-  end
-
-  def get_autotile( bitmaps, tile_id )
-    tileset, index = *AUTOTILE_INDEX[PARENT_TILE[tile_id]]
-    bmp  = bitmaps[tileset]
-    segs = get_segment_set(tile_id)
-    bitm = Bitmap.new(TILESIZE.p1, TILESIZE.p2)
-    tf = tileset_family(tile_id)
-    ats  = case tf
-           when :be, :a1, :a2    ; [AUTOTILE_SIZE1]
-           when :a3              ; [AUTOTILE_SIZE2]
-           when :a4              ; [] # // Unused
-           end
-    for i in 0...segs.size
-      seg = segs[i]
-      case tf
-      when :a4
-        as  = A4_TILE_POSITIONS[index]
-        ab  = get_autotile_bit( as.p1, as.p2, bmp, seg )
-      else
-        x, y = (index%8), (index/8)
-        as   = ats[y % ats.size]
-        ab  = get_autotile_bit( as.p1*x, as.p2*y, bmp, seg )
-       end
-      bitm.blt(SEGMENT_SIZE.p1*(i%2), SEGMENT_SIZE.p2*(i/2), ab, ab.rect)
-      ab.dispose()
-    end
-    return bitm
-  end
-
-  def get_normaltile( bitmap, index )
-    bitm = Bitmap.new(TILESIZE.p1, TILESIZE.p2)
-    sx = (index / 128 % 2 * 8 + index % 8) * TILESIZE.p1;
-    sy = index % 256 / 8 % 16 * TILESIZE.p2;
-    rect = Rect.new(sx, sy, TILESIZE.p1, TILESIZE.p2)
-    bitm.blt(0, 0, bitmap, rect)
-    return bitm
-  end
-
-  def get_a5tile( bitmap, index )
-    index = index-1536
-    bitm = Bitmap.new(TILESIZE.p1, TILESIZE.p2)
-    sx = TILESIZE.p1 * (index%8)
-    sy = TILESIZE.p2 * (index/8)
-    rect = Rect.new(sx, sy, TILESIZE.p1, TILESIZE.p2)
-    bitm.blt(0, 0, bitmap, rect)
-    return bitm
-  end
-
-  def tileset_bitmap(bitmaps, tile_id)
-    set_number = tile_id / 256
-    return bitmaps[5] if set_number == 0
-    return bitmaps[6] if set_number == 1
-    return bitmaps[7] if set_number == 2
-    return bitmaps[8] if set_number == 3
-    return nil
-  end
-
-  def get_tile_bit(bitmaps, tile_id)
-    #File.open("output.log", "a") { |f| f.puts("#{tile_id}") }
-    case tile_id
-    # // B..E
-    when 0...1024
-      return get_normaltile(tileset_bitmap(bitmaps, tile_id), tile_id)
-    when 1536...1664
-      return get_a5tile(bitmaps[4], tile_id)
-    when 2048...8192
-      return get_autotile(bitmaps, tile_id)
-    else
-      return Bitmap.new(32, 32)
-    end
-    return nil
-  end
-
-  def get_waterfalltile_bit( bitmaps, tile_id, frame )
-    return Bitmap.new(32, 32)
-  end
-
-  def save_tileset( id )
-    bmp = Bitmap.new( 8*32, (8192/8)*32 )
-    bmps = []
-    @tileset = Database.tilesets[id]
-    @tileset.tileset_names.each_with_index do |name, i|
-      bmps[i] = Cache.tileset(name)
-    end
-    GC.start()
-    for i in 0...8192
-      bit = get_tile_bit(bmps, i)
-      bmp.blt((i%8)*32, (i/8)*32, bit, bit.rect)
-      bit.dispose
-      puts "Block List Transfering Tile: #{i}"
-      sleep(0.1) if i % 512 == 0
-    end
-    puts "Writing PNG"
-    bmp.write_png( "#{@tileset.name}(Tileset).png" )
-  end
-end
-#ISS::TilemapSettings.save_tileset( 0 )

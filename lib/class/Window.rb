@@ -6,7 +6,7 @@ class SRRI::Window
   include SRRI::Interface::IViewport
 
   def draw(texture)
-    return false if @disposed
+    return false if @_disposed
     return false unless @visible
     return false if @width <= 0
     return false if @height <= 0
@@ -32,7 +32,7 @@ class SRRI::Window
       #ax = ((@width / 2.0) * (1 - scale_x)).to_i if scale_x != 1.0
       ay = ((@height / 2.0) * (1 - scale_y)).to_i if scale_y != 1.0
 
-      no_scale = (scale_x == 1.0 and scale_y == 1.0)
+      #no_scale = (scale_x == 1.0 and scale_y == 1.0)
 
       dx, dy = vx + ax, vy + ay
 
@@ -73,21 +73,12 @@ class SRRI::Window
 
       if sw > 0 and sh > 0
         # Window Skin
-        if no_scale
-          TextureTool.render_texture_fast(
-            texture, dx, dy,
-            @_texture_window_skin,
-            sx, sy, sw, sh,
-            @opacity * xopacity_rate, nil, nil, 1
-          )
-        else
-          texture.render_texture(
-            @_texture_window_skin, dx, dy,
-            src_x: sx, src_y: sy, src_width: sw, src_height: sh,
-            alpha: @opacity * xopacity_rate,
-            scale_x: scale_x, scale_y: scale_y
-          )
-        end
+        texture.render_texture(
+          @_texture_window_skin, dx, dy,
+          src_x: sx, src_y: sy, src_width: sw, src_height: sh,
+          alpha: @opacity * xopacity_rate,
+          scale_x: scale_x, scale_y: scale_y, blend_type: :alpha
+        )
       end
 
       #return if @openness < 255 # true RGSS Behaviour
@@ -111,46 +102,91 @@ class SRRI::Window
         )
       end
 
-      return unless @contents and !@contents.disposed?
+      if @contents and !@contents.disposed?
+        sx, sy = @ox, @oy
+        sw, sh = [@width - pad2, @contents.width].min,
+          [@height - pad2, @contents.height].min
 
-      dx += pad
-      dy += pad
+        diff_x = (vx - vrect.x)
+        diff_y = (vy - vrect.y)
 
-      sx, sy = @ox, @oy
-      sw, sh = [@width - pad2, @contents.width].min,
-        [@height - pad2, @contents.height].min
+        if diff_x < 0
+          sx -= diff_x
+          sw += diff_x
+        end
+        if diff_y < 0
+          sy -= diff_y
+          sh += diff_y
+        end
 
-      diff_x = (vx - vrect.x)
-      diff_y = (vy - vrect.y)
-
-      if diff_x < 0
-        sx -= diff_x
-        sw += diff_x
-      end
-      if diff_y < 0
-        sy -= diff_y
-        sh += diff_y
-      end
-
-      if no_scale
-        TextureTool.render_texture_fast(
-          texture, dx, dy,
-          @contents.texture,
-          sx, sy, sw, sh,
-          @contents_opacity * xopacity_rate, nil, nil, 1
-        )
-      else
         texture.render_texture(
-          @contents.texture, dx, dy,
+          @contents.texture, dx + pad, dy + pad,
           src_x: sx, src_y: sy, src_width: sw, src_height: sh,
           alpha: @contents_opacity * xopacity_rate,
           # SRRI Behaviour
-          scale_x: scale_x, scale_y: scale_y
+          scale_x: scale_x, scale_y: scale_y,
+          blend_type: :alpha
+        )
+      end
+
+      if @arrows_visible && @contents && !@contents.disposed? && @openness > 0
+        cntx = dx + (@width - 16) / 2
+        cnty = dy + (@height - 16) / 2
+
+        if sx > 0
+          texture.render_texture(
+            @windowskin.texture, dx + padding, cnty,
+            src_rect: ARROW_RECT_LEFT,
+            alpha: 0xFF, blend_type: :alpha
+          )
+        end
+
+        if (sw + sx) < @contents.width
+          texture.render_texture(
+            @windowskin.texture, dx + @width - 8 - padding, cnty,
+            src_rect: ARROW_RECT_RIGHT,
+            alpha: 0xFF, blend_type: :alpha
+          )
+        end
+
+        if sy > 0
+          texture.render_texture(
+            @windowskin.texture, cntx, dy + padding,
+            src_rect: ARROW_RECT_UP,
+            alpha: 0xFF, blend_type: :alpha
+          )
+        end
+
+        if (sh + sy) < @contents.height
+          texture.render_texture(
+            @windowskin.texture, cntx, dy + @height - 8 - padding,
+            src_rect: ARROW_RECT_DOWN,
+            alpha: 0xFF, blend_type: :alpha
+          )
+        end
+      end
+
+      if @pause
+        texture.render_texture(
+          @windowskin.texture, dx + (@width - 16) / 2, dy + @height - 16,
+            src_rect: PAUSE_RECTS[@_pause_index],
+            alpha: 0xFF, blend_type: :alpha
         )
       end
 
     end
   end
+
+  ARROW_RECT_UP    = SRRI::Rect.new(80 + 8, 16, 16, 8).freeze
+  ARROW_RECT_DOWN  = SRRI::Rect.new(80 + 8, 16 + 16 + 8, 16, 8).freeze
+  ARROW_RECT_LEFT  = SRRI::Rect.new(80, 16 + 8, 8, 16).freeze
+  ARROW_RECT_RIGHT = SRRI::Rect.new(80 + 16 + 8, 16 + 8, 8, 16).freeze
+  PAUSE_RECTS = [
+    SRRI::Rect.new(96, 64, 16, 16).freeze,
+    SRRI::Rect.new(96 + 16, 64, 16, 16).freeze,
+    SRRI::Rect.new(96, 64 + 16, 16, 16).freeze,
+    SRRI::Rect.new(96 + 16, 64 + 16, 16, 16).freeze
+  ]
 
 private
 
@@ -365,8 +401,13 @@ public
     @contents    = SRRI::Bitmap.new(1, 1)
     @windowskin  = nil
 
+    # Internal cursor tick
     @_cursor_ticks = 0
     @_cursor_opacity = 255
+
+    # Internal pause tick
+    @_pause_tick  = 0
+    @_pause_index = 0
 
     @_looped_background = false
     # internal
@@ -395,21 +436,22 @@ public
               :tone
 
   def dispose
+    super
     @_texture_window_skin.dispose if @_texture_window_skin
     @_texture_content_background.dispose if @_texture_content_background
     @_cursor_texture.dispose if @_cursor_texture
-
-    unregister_drawable
-
-    @disposed = true
-  end
-
-  def disposed?
-    return !!@disposed
   end
 
   def update
     update_cursor_state
+    update_pause_state
+  end
+
+  def update_pause_state
+    if @pause
+      @_pause_tick += 1
+      @_pause_index = (@_pause_tick / 15) % 4
+    end
   end
 
   # default
@@ -472,11 +514,6 @@ public
   def height=(new_height)
     @height = new_height.to_i
     trash_window
-  end
-
-  def viewport=(new_viewport)
-    @viewport = new_viewport
-    super(@viewport)
   end
 
   def cursor_rect=(new_rect)

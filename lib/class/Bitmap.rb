@@ -1,23 +1,40 @@
 #
 # rm-srri/src/class/bitmap.rb
-#   dm 11/04/2013
-# vr 1.1.0
+#   dm 22/04/2013
+# vr 1.1.1
 class SRRI::Bitmap
 
   include SRRI::Interface::IDisposable
 
   attr_accessor :texture, :font
+  attr_reader :filename # [given_filename, real_filename]
+
+  @@bitmaps = [] # debugging
+
+  def self.bitmaps
+    @@bitmaps
+  end
 
   def initialize(*args)
+    @texture  = nil
+    @filename = nil
+    @@bitmaps << self
     case args.size
     when 1 # Path
       obj, = *args # String / Texture
       case obj
       when String
-        # Try RTP
-        SRRI.try_rtp_path(obj) do |fn|
-          @texture = StarRuby::Texture.load(fn) # Texture
+        # Try Path
+        SRRI.find_path(obj) do |fn|
+          begin
+            @texture = StarRuby::Texture.load(fn) # Texture
+          rescue StarRuby::StarRubyError => ex
+            puts fn
+            raise ex
+          end
+          @filename = [obj, fn]
         end
+      # Create Bitmap by binding to a Texture
       when StarRuby::Texture
         @texture = obj
       else
@@ -31,36 +48,45 @@ class SRRI::Bitmap
       raise(ArgumentError, "height too small") if height <= 0
 
       @texture = StarRuby::Texture.new(width, height)
+    else
+      raise(ArgumentError,
+            "expected 1 or 2 arguments but received %d" % args.size)
     end
 
     @font = SRRI::Font.new
+  # clean up texture
   rescue(Exception) => ex
     @texture.dispose if @texture && !@texture.disposed?
     raise(ex)
   end
 
   def dispose
-    @texture.dispose if @texture
     super
+    @@bitmaps.delete(self)
+    @texture.dispose if @texture
   end
 
   def disposed?
-    super or !@texture or (@texture and @texture.disposed?)
+    super || !@texture || (@texture and @texture.disposed?)
   end
 
   def width
+    check_disposed
     @texture.width
   end
 
   def height
+    check_disposed
     @texture.height
   end
 
   def rect
+    check_disposed
     return @texture.rect
   end
 
   def blt(*args)
+    check_disposed
     case args.size
     # x, y, bitmap, rect
     when 4
@@ -70,7 +96,7 @@ class SRRI::Bitmap
     when 5
       tx, ty, sbitmap, srect, opacity = *args
     else
-      raise(ArgumentError)
+      raise(ArgumentError, "expected 4 or 5 but recieved %d" % args.size)
     end
 
     sx, sy, sw, sh = srect.to_a
@@ -79,10 +105,11 @@ class SRRI::Bitmap
                             src_x: sx, src_y: sy, src_width: sw, src_height: sh,
                             alpha: opacity, blend_type: :alpha)
 
-    return true
+    return self
   end
 
   def stretch_blt(*args)
+    check_disposed
     case args.size
     # dest_rect, src_bitmap, src_rect
     when 3
@@ -91,6 +118,8 @@ class SRRI::Bitmap
     # dest_rect, src_bitmap, src_rect, opacity
     when 4
       dest_rect, src_bitmap, src_rect, opacity = *args
+    else
+      raise(ArgumentError, "expected 3 or 4 but received %d" % args.size)
     end
 
     sx, sy, sw, sh = src_rect.to_a
@@ -104,15 +133,19 @@ class SRRI::Bitmap
       src_x: sx, src_y: sy, src_width: sw, src_height: sh,
       alpha: opacity, scale_x: scale_x, scale_y: scale_y
     )
+    self
   end
 
   def clear
+    check_disposed
     #@texture.clear # slow
     @texture.fill_rect(0, 0, @texture.width, @texture.height,
-                       StarRuby::Color::COLOR_TRANS)
+                       SRRI::COLOR_TRANS)
+    self
   end
 
   def clear_rect(*args)
+    check_disposed
     case args.size
     # rect
     when 1
@@ -125,29 +158,44 @@ class SRRI::Bitmap
       raise(ArgumentError)
     end
 
-    @texture.fill_rect(x, y, w, h, StarRuby::Color::COLOR_TRANS)
+    @texture.fill_rect(x, y, w, h, SRRI::COLOR_TRANS)
+    self
   end
 
   # @overwrite
   def blur
+    check_disposed
     @texture.blur
-
-    return self;
+    return self
   end
 
   def radial_blur(angle, division)
+    check_disposed
     puts "fixme: Bitmap#radial_blur"
+    self
   end
 
+  ##
+  # set_pixel(Integer x, Integer y, Color color)
   def set_pixel(x, y, color)
-    @texture.render_pixel(x, y, color)
+    check_disposed
+    @texture[x, y] = color
+    #@texture.render_pixel(x, y, color)
+    self
   end
 
+  ##
+  # get_pixel(Integer x, Integer y) -> Color
   def get_pixel(x, y)
+    check_disposed
     return @texture[x, y]
   end
 
+  ##
+  # fill_rect(Rect rect, Color color)
+  # fill_rect(Integer x, Integer y, Integer width, Integer height, Color color)
   def fill_rect(*args)
+    check_disposed
     case args.size
     # rect, color
     when 2
@@ -165,7 +213,15 @@ class SRRI::Bitmap
     return self
   end
 
+  ##
+  # gradient_fill_rect(Rect rect, Color color1, Color color2)
+  # gradient_fill_rect(Rect rect, Color color1, Color color2, Boolean vertical)
+  # gradient_fill_rect(Integer x, Integer y, Integer width, Integer height,
+  #                    Color color1, Color color2)
+  # gradient_fill_rect(Integer x, Integer y, Integer width, Integer height,
+  #                    Color color1, Color color2, Boolean vertical)
   def gradient_fill_rect(*args)
+    check_disposed
     vertical = false
     case args.size
     # rect, color1, color2
@@ -191,7 +247,14 @@ class SRRI::Bitmap
     return self;
   end
 
+  ##
+  # draw_text(Rect rect, String text)
+  # draw_text(Rect rect, String text, Integer align)
+  # draw_text(Integer x, Integer y, Integer width, Integer height, String text)
+  # draw_text(Integer x, Integer y, Integer width, Integer height, String text,
+  #           Integer align)
   def draw_text(*args)
+    check_disposed
     align = 0
     case args.size
     # rect, text
@@ -278,30 +341,38 @@ class SRRI::Bitmap
     return self
   end
 
+  ##
+  # text_size(String text) -> Rect
   def text_size(text)
     sr_font = @font.to_strb_font
     w, h = *sr_font.get_size(text.to_s)
-    return StarRuby::Rect.new(0, 0, w, h)
+    return SRRI::Rect.new(0, 0, w, h)
   end
 
+  ##
+  # hue_change(Integer hue)
   def hue_change(hue)
+    check_disposed
     @texture.change_hue!(hue % 360)
     return self
   end
 
   def dup
+    check_disposed
     bmp = SRRI::Bitmap.new(@texture.dup)
     bmp.font = @font.dup
     return bmp
   end
 
   def clone
+    check_disposed
     bmp = SRRI::Bitmap.new(@texture.clone)
     bmp.font = @font.clone
     return bmp
   end
 
   def pallete
+    check_disposed
     result = []
     for y in 0...@texture.height
       for x in 0...@texture.width
@@ -324,5 +395,7 @@ class SRRI::Bitmap
 
     return result
   end
+
+  private :check_disposed
 
 end

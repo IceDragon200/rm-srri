@@ -2,8 +2,8 @@
 # rm-srri/lib-exp/sr-chipmap.rb
 #   by IceDragon
 #   dc ??/??/2012
-#   dm 29/03/2013
-# vr 1.0.1
+#   dm 21/04/2013
+# vr 1.1.0
 class SRRI::Chipmap
 
   class ChipmapError < StandardError
@@ -15,22 +15,20 @@ class SRRI::Chipmap
   include SRRI::Interface::IZOrder
 
   def draw(texture)
-    return false if @disposed
+    return false if @_disposed
     return false unless @texture
     return false if @texture.disposed?
     return false unless @visible
     return false if @opacity <= 0
 
-    TextureTool.render_texture_fast(
-      texture, @x, @y,
-      @texture,
-      @ox, @oy, @width, @height,
-      @opacity, nil, nil, 1
-    )
+    texture.render_texture(@texture, x, y,
+                           src_x: ox, src_y: oy,
+                           src_width: width, src_height: height,
+                           alpha: @opacity, blend_type: :alpha)
   end
 
   attr_accessor :map_data, :tilesize, :tile_bitmap, :tile_columns
-  attr_reader :opacity, :x, :y, :z, :width, :height, :ox, :oy
+  attr_reader :opacity, :viewrect, :z
 
   def initialize
     @tilesize = 32
@@ -39,28 +37,51 @@ class SRRI::Chipmap
     @visible = true
 
     @opacity = 255
-    @x, @y, @width, @height = 0, 0, 0, 0
+    @viewrect = Rect.new(0, 0, 0, 0)
     @z = 0
     @ox, @oy = 0, 0
 
     @map_data = nil
     @tile_bitmap = nil
 
-    @disposed = false
+    @_disposed = false
+
+    @texture = nil
 
     register_drawable
     setup_iz_id
   end
 
-  def dispose
-    @texture.dispose
-    @texture = nil
-    @disposed = true
-    unregister_drawable
+  def x
+    @x
   end
 
-  def disposed?
-    return !!@disposed
+  def y
+    @y
+  end
+
+  def ox
+    @viewrect.x
+  end
+
+  def oy
+    @viewrect.y
+  end
+
+  def width
+    @viewrect.width
+  end
+
+  def height
+    @viewrect.height
+  end
+
+  def width_abs
+    @tilesize * @map_data.xsize
+  end
+
+  def height_abs
+    @tilesize * @map_data.ysize
   end
 
   def x=(new_x)
@@ -75,20 +96,32 @@ class SRRI::Chipmap
     @z = new_z.to_i
   end
 
-  def ox=(new_ox)
-    @ox = new_ox.to_i
+  def ox=(n)
+    @viewrect.x = n
   end
 
-  def oy=(new_oy)
-    @oy = new_oy.to_i
+  def oy=(n)
+    @viewrect.y = n
   end
 
-  def width=(new_width)
-    @width = new_width.to_i
+  def width=(n)
+    @viewrect.width = n
   end
 
-  def height=(new_height)
-    @height = new_height.to_i
+  def height=(n)
+    @viewrect.height = n
+  end
+
+  def dispose_texture
+    if @texture
+      @texture.dispose
+      @texture = nil
+    end
+  end
+
+  def dispose
+    super
+    dispose_texture
   end
 
   def opacity=(new_opacity)
@@ -100,6 +133,7 @@ class SRRI::Chipmap
     raise(ChipmapError, "tile_bitmap has not been set") unless @tile_bitmap
 
     pxw, pxh = @tilesize * @map_data.xsize, @tilesize * @map_data.ysize
+    dispose_texture
     @texture = StarRuby::Texture.new(pxw, pxh)
     @texture.clear
 
@@ -109,11 +143,17 @@ class SRRI::Chipmap
       end
     end
 
-    return true
+    return self
   end
 
   def update
     # flash table
+  end
+
+  def view_all
+    @viewrect.set(0, 0,
+                  @map_data.xsize * @tilesize, @map_data.ysize * @tilesize)
+    self
   end
 
 private
@@ -134,16 +174,10 @@ private
 
   def draw_tile(x, y)
     tx, ty = index_to_xy(@map_data[x, y])
-
     r = tile_rect(x, y)
     tr = tile_rect(tx, ty)
-
-    TextureTool.render_texture_fast(
-      @texture, r.x, r.y,
-      @tile_bitmap.texture,
-      tr.x, tr.y, tr.width, tr.height,
-      255, nil, nil, 1
-    )
+    @texture.render_texture(@tile_bitmap.texture, r.x, r.y,
+                            src_rect: tr, alpha: 255, blend_type: :alpha)
   end
 
   def redraw_tile(x, y)

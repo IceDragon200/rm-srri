@@ -8,7 +8,7 @@ class StarRuby::Texture
   # clear_rect(int x, int y, int w, int h)
   def clear_rect(x, y, w, h)
     fill_rect(x, y, w, h, StarRuby::Color::COLOR_TRANS)
-  end
+  end unless method_defined?(:clear_rect)
 
   def crop(x, y, w, h)
     dst_texture = StarRuby::Texture.new(w, h)
@@ -16,6 +16,12 @@ class StarRuby::Texture
                                            src_width: w, src_height: h,
                                            blend_type: :alpha)
     return dst_texture
-  end
+  end unless method_defined?(:crop)
+
+  def clip
+    old_rect = self.clip_rect ? self.clip_rect.dup : nil
+    yield(self.clip_rect ||= rect)
+    self.clip_rect = old_rect
+  end unless method_defined?(:clip)
 
 end

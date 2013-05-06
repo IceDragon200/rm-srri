@@ -17,6 +17,8 @@ class AlphaTransition
 
 end
 
+  @canvas = SRRI::Graphics::Canvas.new(nil)
+
 class << self
 
   attr_accessor :starruby, :canvas
@@ -42,7 +44,7 @@ class << self
 
   def init
     @frame_count = 0
-    @canvas = SRRI::Graphics::Canvas.new(@starruby.screen)
+    @canvas.texture = @starruby.screen
 
     @fade_time, @fade_time_max = 0, 1
     @target_brightness = 255

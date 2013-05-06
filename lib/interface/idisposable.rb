@@ -8,12 +8,17 @@ module SRRI
 module Interface
 module IDisposable
 
+  def check_disposed
+    raise(SRRI.mk_dispose_error(self)) if disposed?
+  end
+
   def dispose
-    @disposed = true
+    check_disposed
+    @_disposed = true
   end
 
   def disposed?
-    !!@disposed
+    !!@_disposed
   end
 
 end

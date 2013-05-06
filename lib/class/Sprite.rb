@@ -17,14 +17,23 @@ class SRRI::Sprite
 
   STARRUBY_BLEND_TYPE = [
     # RGSS
-    :alpha, # 0
-    :add,   # 1
-    :sub,   # 2
+    :alpha,    # 0
+    :add,      # 1
+    :sub,      # 2
 
     # StarRuby
-    :mask,  # 3
-    :none   # -1
+    :mask,     # 3
+    :mulitply, # 4
+    #:divide,   # 5
+    :none      # -1
   ]
+
+  BLEND_ALPHA    = 0
+  BLEND_ADD      = 1
+  BLEND_SUBTRACT = 2
+  BLEND_MASK     = 3
+  BLEND_MULTIPLY = 4
+  BLEND_NONE     = 5
 
   #-// old cropping code
   # Patch for Zoomed sprites
@@ -43,15 +52,15 @@ class SRRI::Sprite
   #sh -= dh if dh > 0
 
   def draw(texture)
-    return false if @disposed
+    return false if @_disposed
     return false unless @visible
     return false unless @opacity > 0
     return false unless @zoom_x > 0
     return false unless @zoom_y > 0
     return false unless @src_rect
-    return false unless @texture
+    return false unless @_texture
     return false if @viewport && !@viewport.visible
-    return false if @texture.disposed?
+    return false if @_texture.disposed?
     return false if @src_rect.empty?
 
     (@viewport || Graphics).translate(@x, @y) do |vx, vy, vrect|
@@ -106,7 +115,7 @@ class SRRI::Sprite
       end
 
       texture.render_texture(
-        @texture, rx, ry,
+        @_texture, rx, ry,
         center_x: @ox, center_y: @oy,
         src_x: sx, src_y: sy, src_width: sw, src_height: sh,
         alpha: @opacity, blend_type: STARRUBY_BLEND_TYPE[@blend_type],
@@ -145,7 +154,7 @@ class SRRI::Sprite
 
     @blend_type = 0
 
-    @disposed = false
+    @_disposed = false
 
     @bush_depth   = 0
     @bush_opacity = 0
@@ -170,13 +179,8 @@ class SRRI::Sprite
   end
 
   def dispose
-    unregister_drawable
-    @disposed = true
-    @texture = nil
-  end
-
-  def disposed?
-    return !!@disposed
+    super
+    @_texture = nil
   end
 
   def update
@@ -188,6 +192,7 @@ class SRRI::Sprite
   # flash(Color color, int duration)
   #
   def flash(color, duration)
+    check_disposed
     return false
   end
 
@@ -205,16 +210,11 @@ class SRRI::Sprite
   def bitmap=(bmp)
     @bitmap = bmp
     @src_rect = @bitmap ? @bitmap.rect.dup : Rect.new(0, 0, 0, 0)
-    @texture = @bitmap ? @bitmap.texture : nil
+    @_texture = @bitmap ? @bitmap.texture : nil
   end
 
   def src_rect=(srect)
     @src_rect = srect || @bitmap ? @bitmap.rect.dup : nil
-  end
-
-  def viewport=(view)
-    @viewport = view
-    super(@viewport)
   end
 
   def visible=(vis)

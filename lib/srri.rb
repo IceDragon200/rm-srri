@@ -2,16 +2,26 @@
 # rm-srri/lib/srri.rb
 module SRRI
 
+  class DisposeError < RuntimeError
+  end
+
+  class ExposureError < RuntimeError
+  end
+
   class CopyError < RuntimeError
   end
 
   class SRRIBreak < Interrupt
   end
 
-  VERSION = "0.7.1".freeze
+  VERSION = "0.8.0".freeze
 
   def self.mk_copy_error(obj)
-    return CopyError.new("Cannot copy #{obj}")
+    CopyError.new("Cannot copy %s" % obj.class.name)
+  end
+
+  def self.mk_dispose_error(obj)
+    DisposeError.new("cannot modify disposed %s" % obj.class.name)
   end
 
 end
@@ -24,12 +34,16 @@ end
 
 module SRRI
 
+  COLOR_TRANS = Color.new(0, 0, 0, 0).freeze
+
   Font.init
 
   DEFAULT_WIDTH  = 544
   DEFAULT_HEIGHT = 416
 
-  @@rtp_path = "/home/icy/Dropbox/xdev/RMVXA-RTP/"
+  @@rtp_path = File.join(ENV['HOME'].gsub(/\\/, '/'),
+                         'Enterbrain', 'RGSS3', 'RPGVXAce')
+
   @@config = {
     cursor: false,
     frame_rate: 60,
@@ -37,21 +51,61 @@ module SRRI
     fullscreen: false,
     vsync: false
   }
+
   @@current_game = nil
 
+  ##
+  # ::rtp_path -> String
   def self.rtp_path
     return @@rtp_path
   end
 
-  def self.try_rtp_path(filename)
-    ex = nil
-    if !Dir.glob(filename + "*").empty?
-      yield filename
-    else
-      yield File.join(rtp_path, filename)
-    end
+  ##
+  # ::remove_extension(String str)
+  def self.remove_extension(str)
+    File.join(File.dirname(str), File.basename(str, File.extname(str)))
   end
 
+  ##
+  # ::find_path(String filename) -> String
+  def self.find_path(filename)
+    strict_case = true
+    org_filename = filename.dup
+    result = nil
+    if !Dir.glob(filename + "*").empty?
+      result = filename
+    else
+      begin
+        entries = Dir.entries(File.dirname(org_filename))
+      rescue Errno::ENOENT
+        entries = []
+      end
+      entries.delete('.'); entries.delete('..')
+      entries.map! do |s|
+        File.join(File.dirname(org_filename), s)
+      end
+      unless strict_case
+        n = entries.find { |s| org_filename.casecmp(remove_extension(s)) == 0 }
+      else
+        n = false
+      end
+      if n
+        result = n
+      else
+        pth = File.join(rtp_path, org_filename)
+        if !Dir.glob(pth + "*").empty?
+          result = pth
+        else
+          raise(Errno::ENOENT, org_filename)
+        end
+      end
+    end
+    yield result if block_given?
+    return result
+  end
+
+  ##
+  # dispose_starruby
   def self.dispose_starruby
     Graphics.starruby = nil
     Input.starruby    = nil

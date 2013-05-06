@@ -8,7 +8,7 @@ class SRRI::SoftSprite
   include SRRI::Interface::IZOrder
 
   def draw(buffer)
-    return false if @disposed
+    return false if @_disposed
     return false unless @texture
     return false if @texture.disposed?
     return false unless @visible
@@ -29,15 +29,6 @@ class SRRI::SoftSprite
 
     register_drawable
     setup_iz_id
-  end
-
-  def dispose
-    @disposed = true
-    unregister_drawable
-  end
-
-  def disposed?
-    return !!@disposed
   end
 
   def update

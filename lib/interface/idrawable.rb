@@ -8,7 +8,10 @@ module SRRI
 module Interface
 module IDrawable
 
+  include SRRI::Interface::IDisposable
+
 private
+
   def register_drawable
     # Register
     Graphics.canvas.add_drawable(self)
@@ -20,8 +23,14 @@ private
   end
 
 public
+
   def draw(texture)
     return false
+  end
+
+  def dispose
+    super
+    unregister_drawable
   end
 
 end

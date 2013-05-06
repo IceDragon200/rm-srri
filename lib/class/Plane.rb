@@ -98,13 +98,8 @@ class SRRI::Plane
   end
 
   def dispose
+    super
     @_texture.dispose if @_texture and not @_texture.disposed?
-    unregister_drawable
-    @disposed = true
-  end
-
-  def disposed?
-    return !!@disposed
   end
 
   def bitmap=(new_bitmap)
@@ -113,7 +108,6 @@ class SRRI::Plane
   end
 
   def viewport=(new_viewport)
-    @viewport = new_viewport
     @_texture_changed = true
     super(@viewport)
   end

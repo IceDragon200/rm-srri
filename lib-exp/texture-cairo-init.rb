@@ -1,6 +1,6 @@
 #
 # rm-srri/lib-exp/texture-cairo-init.rb
-# vr 1.1.1
+# vr 1.2.0
 class StarRuby::Texture
 
   attr_accessor :_cairo_surface, :_cairo_context
@@ -44,6 +44,24 @@ class StarRuby::Texture
     (@_cairo_surface.destroy; @_cairo_surface = nil) if @_cairo_surface
     (@_cairo_context.destroy; @_cairo_context = nil) if @_cairo_context
     post_cairo_dispose
+  end
+
+  def cairo
+    raise(RuntimeError, "Cannot modify disposed Texture") if disposed?
+    init_cairo_bind unless @_cairo_context
+    @_cairo_context.save do
+      yield @_cairo_context
+    end
+    self
+  end
+
+  ##
+  # ::cairo_new(Integer w, Integer h)
+  #   Creates a new texture with cairo bindings setup
+  def self.cairo_new(w, h)
+    texture = new(w, h)
+    texture.init_cairo_bind(true)
+    return texture
   end
 
 end

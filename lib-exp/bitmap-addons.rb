@@ -66,4 +66,9 @@ class SRRI::Bitmap
     Bitmap.new(@texture.crop(x, y, w, h))
   end
 
+  def fill(color)
+    @texture.fill(color)
+    self
+  end
+
 end

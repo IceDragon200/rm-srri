@@ -8,8 +8,9 @@ module SRRI::Graphics
       # Group objects by #z
       # Hash<int z, IDrawable[]>
       zs = @drawable.inject({}) do |r, e|
-        src = (e.viewport || e)
-        r[[src.z, src.iz_id, e.z, e.iz_id]] = e
+        key = (v = e.viewport) ? [v.z, v.iz_id, e.z, e.iz_id] :
+                                 [e.z, e.iz_id, 0, 0]
+        r[key] = e
         r
       end
 
@@ -48,8 +49,8 @@ module SRRI::Graphics
 
     def redraw
       do_reorder_z unless @sorted_drawable
-      #@texture.clear
-      @texture.fill_rect(0, 0, @texture.width, @texture.height, @clear_color)
+      @texture.clear
+      #@texture.fill_rect(0, 0, @texture.width, @texture.height, @clear_color)
       #@drawable.each_with_object(@texture, &:draw)
       for obj in @drawable ; obj.draw(@texture) end
 
