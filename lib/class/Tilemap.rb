@@ -372,7 +372,8 @@ class SRRI::Tilemap
     for x in 0...@map_data.xsize
       for y in 0...@map_data.ysize
         shadowbit = @map_data[x, y, 3]
-        #bitmap.fill_rect(32 * x, 32 * y, 16, 16, shadow_color)
+        #bitmap.fill_rect(TILESIZE * x, TILESIZE * y,
+        #                 TILESIZE / 2, TILESIZE / 2, shadow_color)
       end
     end
   end
@@ -381,15 +382,14 @@ class SRRI::Tilemap
   #--------------------------------------------------------------------------
   def draw_flash_layer
     return unless @flash_data
-    bitmap = Bitmap.new(@map_data.xsize * TILESIZE, @map_data.ysize * TILESIZE)
+    bitmap = Bitmap.new(@flash_data.xsize * TILESIZE,
+                        @flash_data.ysize * TILESIZE)
     @layers[4].bitmap = bitmap
     for x in 0...@flash_data.xsize
       for y in 0...@flash_data.ysize
         rgb12 = @flash_data[x, y] & 0xFFF
-        color = (@@flash_cache[rgb12] ||= Color.new(((rgb12 >> 8) & 0xF) * 0x11,
-                                                    ((rgb12 >> 4) & 0xF) * 0x11,
-                                                    ((rgb12 >> 0) & 0xF) * 0x11))
-        bitmap.fill_rect(32 * x, 32 * y, 32, 32, color)
+        color = SRRI.rgb12_color(rgb12)
+        bitmap.fill_rect(TILESIZE * x, TILESIZE * y, TILESIZE, TILESIZE, color)
       end
     end
   end

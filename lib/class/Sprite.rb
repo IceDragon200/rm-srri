@@ -28,12 +28,12 @@ class SRRI::Sprite
     :none      # -1
   ]
 
-  BLEND_ALPHA    = 0
-  BLEND_ADD      = 1
-  BLEND_SUBTRACT = 2
-  BLEND_MASK     = 3
-  BLEND_MULTIPLY = 4
-  BLEND_NONE     = 5
+  BLEND_TYPE_ALPHA    = 0
+  BLEND_TYPE_ADD      = 1
+  BLEND_TYPE_SUBTRACT = 2
+  BLEND_TYPE_MASK     = 3
+  BLEND_TYPE_MULTIPLY = 4
+  BLEND_TYPE_NONE     = 5
 
   #-// old cropping code
   # Patch for Zoomed sprites

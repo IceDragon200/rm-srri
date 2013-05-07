@@ -1,6 +1,18 @@
 #
 # rm-srri/lib/srri.rb
+#   dm 07/05/2013
 module SRRI
+
+  VERSION = "0.8.1".freeze
+
+  BIT1 = 1
+  BIT2 = 2
+  BIT3 = 4
+  BIT4 = 8
+  BIT5 = 16
+  BIT6 = 32
+  BIT7 = 64
+  BIT8 = 128
 
   class DisposeError < RuntimeError
   end
@@ -13,8 +25,6 @@ module SRRI
 
   class SRRIBreak < Interrupt
   end
-
-  VERSION = "0.8.0".freeze
 
   def self.mk_copy_error(obj)
     CopyError.new("Cannot copy %s" % obj.class.name)
@@ -132,6 +142,14 @@ module SRRI
     Graphics.starruby = @@current_game
     Input.starruby    = @@current_game
     return @@current_game
+  end
+
+  @@flash_cache = {}
+
+  def self.rgb12_color(rgb12)
+    (@@flash_cache[rgb12] ||= Color.new(((rgb12 >> 8) & 0xF) * 0x11,
+                                        ((rgb12 >> 4) & 0xF) * 0x11,
+                                        ((rgb12 >> 0) & 0xF) * 0x11))
   end
 
 end

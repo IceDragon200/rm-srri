@@ -1,7 +1,7 @@
 #
-# rm-srri/src/class/bitmap.rb
-#   dm 22/04/2013
-# vr 1.1.1
+# rm-srri/lib/class/Bitmap.rb
+#   dm 06/05/2013
+# vr 1.2.0
 class SRRI::Bitmap
 
   include SRRI::Interface::IDisposable
@@ -99,7 +99,7 @@ class SRRI::Bitmap
       raise(ArgumentError, "expected 4 or 5 but recieved %d" % args.size)
     end
 
-    sx, sy, sw, sh = srect.to_a
+    sx, sy, sw, sh = Rect.cast(srect).to_a
 
     @texture.render_texture(sbitmap.texture, tx, ty,
                             src_x: sx, src_y: sy, src_width: sw, src_height: sh,
@@ -122,8 +122,8 @@ class SRRI::Bitmap
       raise(ArgumentError, "expected 3 or 4 but received %d" % args.size)
     end
 
-    sx, sy, sw, sh = src_rect.to_a
-    dx, dy, dw, dh = dest_rect.to_a
+    sx, sy, sw, sh = Rect.cast(src_rect).to_a
+    dx, dy, dw, dh = Rect.cast(dest_rect).to_a
 
     scale_x = dw / sw.to_f
     scale_y = dh / sh.to_f
@@ -150,7 +150,7 @@ class SRRI::Bitmap
     # rect
     when 1
       rect, = *args
-      x, y, w, h = *rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # x, y, width, height
     when 4
       x, y, w, h = *args
@@ -162,13 +162,16 @@ class SRRI::Bitmap
     self
   end
 
-  # @overwrite
+  ##
+  # blur
   def blur
     check_disposed
     @texture.blur
-    return self
+    self
   end
 
+  ##
+  # radial_blur(Integer angle, Integer division)
   def radial_blur(angle, division)
     check_disposed
     puts "fixme: Bitmap#radial_blur"
@@ -200,7 +203,7 @@ class SRRI::Bitmap
     # rect, color
     when 2
       rect, color = *args
-      x, y, w, h = rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # x, y, width, height, color
     when 5
       x, y, w, h, color = *args
@@ -227,11 +230,11 @@ class SRRI::Bitmap
     # rect, color1, color2
     when 3
       rect, color1, color2 = *args
-      x, y, w, h = *rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # rect, color1, color2, vertical
     when 4
       rect, color1, color2, vertical = *args
-      x, y, w, h = *rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # x, y, width, height, color1, color2
     when 6
       x, y, w, h, color1, color2 = *args
@@ -260,11 +263,11 @@ class SRRI::Bitmap
     # rect, text
     when 2
       rect, text = *args
-      x, y, w, h = rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # rect, text, align
     when 3
       rect, text, align = *args
-      x, y, w, h = rect.to_a
+      x, y, w, h = Rect.cast(rect).to_a
     # x, y, width, height, text
     when 5
       x, y, w, h, text = *args
@@ -369,31 +372,6 @@ class SRRI::Bitmap
     bmp = SRRI::Bitmap.new(@texture.clone)
     bmp.font = @font.clone
     return bmp
-  end
-
-  def pallete
-    check_disposed
-    result = []
-    for y in 0...@texture.height
-      for x in 0...@texture.width
-        col_ary = @texture[x, y].to_a
-        col_ary.map!(&:to_i)
-        result.push(col_ary) unless result.include?(col_ary)
-      end
-    end
-
-    result.replace(
-      result.sort_by do |a|
-        a.reverse
-      end
-    )
-    result.collect! do
-      |(r, g, b, a)|
-
-      StarRuby::Color.new(r, g, b, a)
-    end
-
-    return result
   end
 
   private :check_disposed
