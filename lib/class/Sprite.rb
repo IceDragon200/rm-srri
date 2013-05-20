@@ -1,6 +1,8 @@
 #
-# rm-srri/lib/class/sprite.rb
-#
+# rm-srri/lib/class/Sprite.rb
+#   by IceDragon
+#   dc ??/??/2012
+#   dm 09/05/2013
 # vr 0.7.6
 
 ##
@@ -13,7 +15,10 @@
 #
 class SRRI::Sprite
 
-  include SRRI::Interface::IViewport
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
+
+  register_renderable('Sprite')
 
   STARRUBY_BLEND_TYPE = [
     # RGSS
@@ -51,7 +56,7 @@ class SRRI::Sprite
   #sw -= dw if dw > 0
   #sh -= dh if dh > 0
 
-  def draw(texture)
+  def render(texture)
     return false if @_disposed
     return false unless @visible
     return false unless @opacity > 0
@@ -63,57 +68,31 @@ class SRRI::Sprite
     return false if @_texture.disposed?
     return false if @src_rect.empty?
 
-    (@viewport || Graphics).translate(@x, @y) do |vx, vy, vrect|
-      rx, ry = vx - @ox, vy - @oy
+    (@viewport || Graphics).translate(@x, @y) do |x, y, vrect|
+      rx, ry = x - @ox, y - @oy
       sx, sy, sw, sh = *@src_rect.to_a
-
-      if @viewport
-        sw *= @zoom_x if @zoom_x > 1.0
-        sh *= @zoom_y if @zoom_y > 1.0
-
-        # real view x, y, x2, y2
-        rvx, rvy = vrect.x, vrect.y
-        rvx2, rvy2 = rvx + vrect.width, rvy + vrect.height
-
-        diffx = rx - rvx
-        diffy = ry - rvy
-
-        if diffx < 0
-          unless @_ignore_viewport_crop
-            sx -= diffx
-            sw += diffx
-          end
-          rx -= diffx
-        end
-
-        if diffy < 0
-          unless @_ignore_viewport_crop
-            sy -= diffy
-            sh += diffy
-          end
-          ry -= diffy
-        end
-
-        unless @_ignore_viewport_crop
-          sw += [(rvx2 - (rx + sw)), 0].min
-          sh += [(rvy2 - (ry + sh)), 0].min
-
-          if @zoom_x > 1.0
-            sw = (sw / @zoom_x).round
-            rx += @src_rect.width / @zoom_x
-          elsif @zoom_x < 1.0
-            #rx -= sw * @zoom_x
-          end
-
-          if @zoom_y > 1.0
-            sh = (sh / @zoom_y).round
-            ry += @src_rect.height / @zoom_y
-          elsif @zoom_y < 1.0
-            #ry -= sh * @zoom_y
-          end
-        end
+      # Clipping :O
+      vx = vrect.x
+      vy = vrect.y
+      if rx < vx
+        df  = vx - rx
+        sw -= df
+        sx += df
+        rx  = vx
       end
-
+      if ry < vy
+        df  = vy - ry
+        sh -= df
+        sy += df
+        ry  = vy
+      end
+      if (x2 = rx + sw) > (rx2 = vx + vrect.width)
+        sw -= x2 - rx2
+      end
+      if (y2 = ry + sh) > (ry2 = vy + vrect.height)
+        sh -= y2 - ry2
+      end
+      # / clipping
       texture.render_texture(
         @_texture, rx, ry,
         center_x: @ox, center_y: @oy,
@@ -166,16 +145,16 @@ class SRRI::Sprite
 
     @_ignore_viewport_crop = false
 
-    register_drawable
     setup_iz_id
+    register_renderable
   end
 
   def dup
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   def clone
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   def dispose
@@ -229,10 +208,11 @@ class SRRI::Sprite
     @y = new_y.to_i
   end
 
-  def z=(new_z)
-    @z = new_z.to_i
-    super(@z)
-  end
+  # Handled by Interface::IZOrder
+  #def z=(new_z)
+  #  @z = new_z.to_i
+  #  super(@z)
+  #end
 
   def ox=(new_ox)
     @ox = new_ox.to_i
@@ -299,3 +279,51 @@ class SRRI::Sprite
   end
 
 end
+
+__END__
+      if @viewport
+        sw *= @zoom_x if @zoom_x > 1.0
+        sh *= @zoom_y if @zoom_y > 1.0
+
+        # real view x, y, x2, y2
+        rvx, rvy = vrect.x, vrect.y
+        rvx2, rvy2 = rvx + vrect.width, rvy + vrect.height
+
+        diffx = rx - rvx
+        diffy = ry - rvy
+
+        if diffx < 0
+          unless @_ignore_viewport_crop
+            sx -= diffx
+            sw += diffx
+          end
+          rx -= diffx
+        end
+
+        if diffy < 0
+          unless @_ignore_viewport_crop
+            sy -= diffy
+            sh += diffy
+          end
+          ry -= diffy
+        end
+
+        unless @_ignore_viewport_crop
+          sw += [(rvx2 - (rx + sw)), 0].min
+          sh += [(rvy2 - (ry + sh)), 0].min
+
+          if @zoom_x > 1.0
+            sw = (sw / @zoom_x).round
+            rx += @src_rect.width / @zoom_x
+          elsif @zoom_x < 1.0
+            #rx -= sw * @zoom_x
+          end
+
+          if @zoom_y > 1.0
+            sh = (sh / @zoom_y).round
+            ry += @src_rect.height / @zoom_y
+          elsif @zoom_y < 1.0
+            #ry -= sh * @zoom_y
+          end
+        end
+      end

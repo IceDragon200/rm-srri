@@ -1,30 +1,25 @@
-module SRRI::Graphics
+#
+# rm-srri/lib/module/graphics/Canvas.rb
+#   dm 09/05/2013
+# vr 1.0.0
+module SRRI
+module Graphics
 
   # TODO:
-  # Implement Layer system.
+  #   Implement Layer system.
   class Canvas
 
+    attr_accessor :drawable, :texture
+    attr_reader :opacity
+
     def do_reorder_z
-      # Group objects by #z
-      # Hash<int z, IDrawable[]>
-      zs = @drawable.inject({}) do |r, e|
-        key = (v = e.viewport) ? [v.z, v.iz_id, e.z, e.iz_id] :
-                                 [e.z, e.iz_id, 0, 0]
-        r[key] = e
-        r
+      @drawable.map! do |e|
+        (v = e.viewport) ? [v.z, v.iz_id, e.z, e.iz_id, e] :
+                           [e.z, e.iz_id, 0, 0, e]
       end
-
-      # Jam everything back into the @drawable
-      @drawable.clear
-
-      zs.keys.sort.each do
-        |key|
-
-        @drawable.push(zs[key])
-      end
-
+      @drawable.sort!
+      @drawable.map!(&:last)
       @sorted_drawable = true
-
       return self
     end
 
@@ -32,16 +27,12 @@ module SRRI::Graphics
       @sorted_drawable = false
     end
 
-    attr_accessor :drawable, :texture
-
     def initialize(texture)
       @texture = texture
-      @drawable = [] # IDrawable[]
+      @drawable = [] # IRenderable[]
       @opacity = 255
       @clear_color = StarRuby::Color.new(0, 0, 0, 0)
     end
-
-    attr_reader :opacity
 
     def opacity=(n)
       @opacity = [[n, 0].max, 255].min
@@ -52,9 +43,8 @@ module SRRI::Graphics
       @texture.clear
       #@texture.fill_rect(0, 0, @texture.width, @texture.height, @clear_color)
       #@drawable.each_with_object(@texture, &:draw)
-      for obj in @drawable ; obj.draw(@texture) end
-
-      return 0
+      for obj in @drawable ; obj.render(@texture) end
+      return false
     end
 
     def width
@@ -72,14 +62,14 @@ module SRRI::Graphics
       return @rect ||= Rect.new(0, 0, width, height)
     end
 
-    def add_drawable(idraw_obj)
+    def add_renderable(idraw_obj)
       @drawable.push(idraw_obj)
       reorder_z
       #puts "Added: #{idraw_obj}"
       return self
     end
 
-    def rem_drawable(idraw_obj)
+    def rem_renderable(idraw_obj)
       @drawable.delete(idraw_obj)
       reorder_z
       #puts "Removed: #{idraw_obj}"
@@ -100,4 +90,5 @@ module SRRI::Graphics
 
   end
 
+end
 end

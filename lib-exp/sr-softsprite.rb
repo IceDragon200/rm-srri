@@ -3,11 +3,13 @@
 # vr 1.0.0
 class SRRI::SoftSprite
 
-  include SRRI::Interface::IDrawable
+  include SRRI::Interface::IRenderable
   include SRRI::Interface::IDisposable
   include SRRI::Interface::IZOrder
 
-  def draw(buffer)
+  register_renderable('SoftSprite')
+
+  def render(buffer)
     return false if @_disposed
     return false unless @texture
     return false if @texture.disposed?
@@ -27,7 +29,7 @@ class SRRI::SoftSprite
     @opacity = 255
     @visible = true
 
-    register_drawable
+    register_renderable
     setup_iz_id
   end
 

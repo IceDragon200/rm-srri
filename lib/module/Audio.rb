@@ -8,6 +8,9 @@ class << self
 
   def init
     # nothing here but us chickens
+    SRRI.try_log do |logger|
+      logger.puts("Audio initialized")
+    end
   end
 
   def setup_midi
@@ -84,6 +87,6 @@ end
 end
 end
 
-require_relative 'audio/base.rb'
-require_relative 'audio/se.rb'
-require_relative 'audio/bgm.rb'
+require_relative 'audio/Base.rb'
+require_relative 'audio/SE.rb'
+require_relative 'audio/BGM.rb'

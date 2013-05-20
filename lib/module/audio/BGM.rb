@@ -1,4 +1,5 @@
-module SRRI::Audio
+module SRRI
+module Audio
 
   class BGM < SRRI::Audio::Base
 
@@ -10,7 +11,7 @@ module SRRI::Audio
     end
 
     def play(pos=0)
-      return BGM.stop
+      BGM.stop
       Audio.bgm_play(@filename, @volume, @pitch, pos)
     end
 
@@ -22,4 +23,5 @@ module SRRI::Audio
 
   end
 
+end
 end

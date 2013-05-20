@@ -1,5 +1,5 @@
 #
-# rm-srri/lib/interface/izorder.rb
+# rm-srri/lib/interface/iZOrder.rb
 #   by IceDragon
 #   dc ??/??/2012
 #   dm 29/03/2013
@@ -21,25 +21,23 @@ public
   attr_reader :iz_id
 
   def z
-    0
+    @z
   end
 
   def z=(new_z)
     if @_last_z != new_z
+      @_last_z = @z = new_z.to_i
       Graphics.canvas.reorder_z
-      @_last_z = @z = new_z
     end
   end
 
   def viewport
-    nil
+    @viewport
   end
 
   def viewport=(new_viewport)
     if @_last_viewport != new_viewport
-      unregister_drawable # unregister
-      @_last_viewport = @viewport = new_viewport
-      register_drawable # re-register
+      cycle_register { |_| @_last_viewport = @viewport = new_viewport }
       Graphics.canvas.reorder_z
     end
   end

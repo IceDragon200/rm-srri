@@ -1,10 +1,16 @@
 #
-# rm-srri/lib/class/tilemap.rb
+# rm-srri/lib/class/Tilemap.rb
+#   by IceDragon
+#   dc ??/??/2012
+#   dm 09/05/2013
 # vr 1.0.0
 # Fomar0153's tilemap
 class SRRI::Tilemap
 
-  include SRRI::Interface::IViewport
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
+
+  #register_renderable('Tilemap')
 
   #--------------------------------------------------------------------------
   # * Constants
@@ -46,7 +52,7 @@ class SRRI::Tilemap
     @layers[4].z = 202
     @layers[4].blend_type = 1
 
-    register_drawable
+    #register_renderable
     setup_iz_id
 
     self.viewport = viewport
@@ -444,7 +450,8 @@ end
 __END__
 class SRRI::Tilemap
 
-  include SRRI::Interface::IViewport
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
 
   TILESIZE = 32
 
@@ -475,7 +482,7 @@ private
     @z       = 0
     @visible = true
 
-    register_drawable
+    register_renderable
     setup_iz_id
   end
 
@@ -486,15 +493,15 @@ public
   end
 
   def dup
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   def clone
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   def dispose
-    unregister_drawable
+    unregister_renderable
     super
   end
 

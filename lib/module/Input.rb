@@ -9,6 +9,9 @@ class << self
 
   def init
     #
+    SRRI.try_log do |logger|
+      logger.puts("Input initialized")
+    end
   end
 
   INPUT_TABLE = {

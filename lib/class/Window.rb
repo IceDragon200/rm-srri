@@ -1,11 +1,14 @@
 #
-# rm-srri/lib/class/window.rb
+# rm-srri/lib/class/Window.rb
 # vr 1.0.0
 class SRRI::Window
 
-  include SRRI::Interface::IViewport
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
 
-  def draw(texture)
+  register_renderable('Window')
+
+  def render(texture)
     return false if @_disposed
     return false unless @visible
     return false if @width <= 0
@@ -130,12 +133,13 @@ class SRRI::Window
       end
 
       if @arrows_visible && @contents && !@contents.disposed? && @openness > 0
+        arrow_padding = 4
         cntx = dx + (@width - 16) / 2
         cnty = dy + (@height - 16) / 2
 
         if sx > 0
           texture.render_texture(
-            @windowskin.texture, dx + padding, cnty,
+            @windowskin.texture, dx + arrow_padding, cnty,
             src_rect: ARROW_RECT_LEFT,
             alpha: 0xFF, blend_type: :alpha
           )
@@ -143,7 +147,7 @@ class SRRI::Window
 
         if (sw + sx) < @contents.width
           texture.render_texture(
-            @windowskin.texture, dx + @width - 8 - padding, cnty,
+            @windowskin.texture, dx + @width - 8 - arrow_padding, cnty,
             src_rect: ARROW_RECT_RIGHT,
             alpha: 0xFF, blend_type: :alpha
           )
@@ -151,7 +155,7 @@ class SRRI::Window
 
         if sy > 0
           texture.render_texture(
-            @windowskin.texture, cntx, dy + padding,
+            @windowskin.texture, cntx, dy + arrow_padding,
             src_rect: ARROW_RECT_UP,
             alpha: 0xFF, blend_type: :alpha
           )
@@ -159,7 +163,7 @@ class SRRI::Window
 
         if (sh + sy) < @contents.height
           texture.render_texture(
-            @windowskin.texture, cntx, dy + @height - 8 - padding,
+            @windowskin.texture, cntx, dy + @height - 8 - arrow_padding,
             src_rect: ARROW_RECT_DOWN,
             alpha: 0xFF, blend_type: :alpha
           )
@@ -415,16 +419,16 @@ public
     redraw_window
 
     # interfaces
-    register_drawable
     setup_iz_id
+    register_renderable
   end
 
   def dup
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   def clone
-    raise(SRRI.mk_copy_error(self))
+    raise(SRRI::Error.mk_copy_error(self))
   end
 
   attr_reader :x, :y, :z, :ox, :oy, :width, :height,

@@ -8,32 +8,28 @@
 #
 class StarRuby::Vector
 
-  def angle
-    return radian * PI180
-  end
-
   def normalize!
     rad = radian
     self.x = Math.cos(rad)
     self.y = Math.sin(rad)
     self
-  end
+  end unless method_defined?(:normalize!)
 
   def normalize
     return dup.normalize!
-  end
+  end unless method_defined?(:normalize)
 
   def polar
     [magnitude, radian]
-  end
+  end unless method_defined?(:polar)
 
   def flipflop!
     self.x, self.y = self.y, self.x
     self
-  end
+  end unless method_defined?(:flipflop!)
 
   def flipflop
     dup.flipflop!
-  end
+  end unless method_defined?(:flipflop)
 
 end

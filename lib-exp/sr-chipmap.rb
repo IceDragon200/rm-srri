@@ -6,13 +6,14 @@
 # vr 1.2.0
 class SRRI::Chipmap
 
-  class ChipmapError < StandardError
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
+
+  register_renderable('Chipmap')
+
+  class ChipmapError < Exception
     #
   end
-
-  include SRRI::Interface::IDrawable
-  include SRRI::Interface::IDisposable
-  include SRRI::Interface::IZOrder
 
   LAYER_TILE   = 0x0
   LAYER_SHADOW = 0x1
@@ -25,21 +26,29 @@ class SRRI::Chipmap
 
   @@flash_cache = {}
 
-  def draw(texture)
+  ##
+  # render(Texture texture)
+  def render(texture)
     return false if @_disposed
-    return false unless @texture
-    return false if @texture.disposed?
+    return false unless @map_data || @shadow_data || @flash_data
     return false unless @visible
+    return false if @viewport and !@viewport.visible
     return false if @opacity <= 0
 
-    for i in 0...LAYER_COUNT
-      layer = @layers[i]
-      texture.render_texture(layer, x, y,
-                             src_x: ox, src_y: oy,
-                             src_width: width, src_height: height,
-                             alpha: LAYER_OPACITY[i] || @opacity,
-                             blend_type: LAYER_BLEND_TYPE[i])
+    (@viewport || Graphics).translate(@x, @y) do |vx, vy, vrect|
+      dx, dy, dw, dh = SRRI.viewport_clip(vrect, vx, vy, width, height)
+      for i in 0...LAYER_COUNT
+        next unless layer_enabled?(i)
+        #puts "drawing layer #{i} #{[ox, oy, x, y, width, height]}"
+        layer = @layers[i]
+        texture.render_texture(layer, dx, dy,
+                               src_x: ox, src_y: oy,
+                               src_width: dw, src_height: dh,
+                               alpha: LAYER_OPACITY[i] || @opacity,
+                               blend_type: LAYER_BLEND_TYPE[i])
+      end
     end
+    return true
   end
 
   attr_accessor :map_data, :shadow_data, :flash_data # Table<dim: 2>
@@ -56,7 +65,7 @@ class SRRI::Chipmap
 
     @opacity = 255
     @viewrect = Rect.new(0, 0, 0, 0)
-    @z = 0
+    @x, @y, @z = 0, 0, 0
     @ox, @oy = 0, 0
 
     @map_data    = nil
@@ -69,8 +78,8 @@ class SRRI::Chipmap
 
     @layers = Array.new(LAYER_COUNT, nil)
 
-    register_drawable
     setup_iz_id
+    register_renderable
   end
 
   def x
@@ -81,9 +90,9 @@ class SRRI::Chipmap
     @y
   end
 
-  def z
-    @z
-  end
+  #def z
+  #  @z
+  #end
 
   def ox
     @viewrect.x
@@ -121,9 +130,9 @@ class SRRI::Chipmap
     @y = new_y.to_i
   end
 
-  def z=(new_z)
-    @z = new_z.to_i
-  end
+  #def z=(new_z)
+  #  super(new_z)
+  #end
 
   def ox=(n)
     @viewrect.x = n
@@ -146,7 +155,10 @@ class SRRI::Chipmap
   end
 
   def create_layers
-    pxw, pxh = @tilesize * @map_data.xsize, @tilesize * @map_data.ysize
+    data = @map_data || @shadow_data || @flash_data
+    data_width  = data.xsize
+    data_height = data.ysize
+    pxw, pxh = @tilesize * data_width, @tilesize * data_height
     for i in 0...LAYER_COUNT
       @layers[i] = StarRuby::Texture.new(pxw, pxh)
     end
@@ -154,24 +166,25 @@ class SRRI::Chipmap
 
   def dispose_layers
     for layer in @layers
-      layer.dispose unless layer.disposed?
+      layer.dispose if layer && !layer.disposed?
     end
   end
 
   def dispose
     super
-    dispose_texture
+    dispose_layers
   end
 
   def refresh
     raise(ChipmapError, "map_data has not been set") unless @map_data
     raise(ChipmapError, "tile_bitmap has not been set") unless @tile_bitmap
 
+    assert_data
+
     dispose_layers
     create_layers
-    draw_tile_layer
-    draw_shadow_layer
-    draw_flash_layer
+
+    redraw_layers
 
     return self
   end
@@ -186,7 +199,32 @@ class SRRI::Chipmap
     self
   end
 
+  def layer_enabled?(i)
+    if    i == 0 then !!@map_data
+    elsif i == 1 then !!@shadow_data
+    elsif i == 2 then !!@flash_data
+    else              false
+    end
+  end
+
 private
+
+  def assert_data
+    mdsize = @map_data ? [@map_data.xsize, @map_data.ysize] : nil
+    sdsize = @shadow_data ? [@shadow_data.xsize, @shadow_data.ysize] : nil
+    fhsize = @flash_data ? [@flash_data.xsize, @flash_data.ysize] : nil
+    return false unless mdsize || sdsize || fhsize
+    mdsize ||= sdsize || fhsize
+    sdsize ||= mdsize || fhsize
+    fhsize ||= mdsize || sdsize
+    if mdsize != sdsize || sdsize != fhsize || mdsize != fhsize
+      raise(ChipmapError,
+            "Data size mismatch: Map=%s Shadow=%s Flash=%s" % [mdsize,
+                                                               sdsize,
+                                                               fhsize])
+    end
+    return true
+  end
 
   def index_to_xy(index)
     return [(index % @tile_columns), (index / @tile_columns)]
@@ -208,8 +246,7 @@ private
   def clear_tile(x, y)
     r = tile_rect(x, y)
     texture = @layers[LAYER_TILE]
-    texture.fill_rect(r.x, r.y, r.width, r.height,
-                      StarRuby::Color::COLOR_TRANS)
+    texture.clear_rect(r.x, r.y, r.width, r.height)
   end
 
   def redraw_tile(x, y)
@@ -218,6 +255,7 @@ private
   end
 
   def draw_tile_layer
+    return unless @map_data
     for y in 0...@map_data.ysize
       for x in 0...@map_data.xsize
         draw_tile(x, y)
@@ -225,12 +263,43 @@ private
     end
   end
 
+  ##
+  # draw_shadow_layer
+  #   BIT[1] - Top Left
+  #   BIT[2] - Top Right
+  #   BIT[3] - Bottom Left
+  #   BIT[4] - Bottom Right
   def draw_shadow_layer
     return unless @shadow_data
     texture = @layers[LAYER_SHADOW]
-    for x in 0...@shadow_data.xsize
-      for y in 0...@shadow_data.ysize
-
+    shadow_color = Color.new(0, 0, 0, 255)
+    shadow_size = @tilesize / 2
+    bitmask1 = SRRI::BIT[1]
+    bitmask2 = SRRI::BIT[2]
+    bitmask3 = SRRI::BIT[3]
+    bitmask4 = SRRI::BIT[4]
+    for y in 0...@shadow_data.ysize
+      for x in 0...@shadow_data.xsize
+        byte = @shadow_data[x, y] & 0xFF
+        tx = x * @tilesize
+        ty = y * @tilesize
+        # shadow
+        if byte & bitmask1 == bitmask1
+          texture.fill_rect(tx, ty,
+                            shadow_size, shadow_size, shadow_color)
+        end
+        if byte & bitmask2 == bitmask2
+          texture.fill_rect(tx + shadow_size, ty,
+                            shadow_size, shadow_size, shadow_color)
+        end
+        if byte & bitmask3 == bitmask3
+          texture.fill_rect(tx, ty + shadow_size,
+                            shadow_size, shadow_size, shadow_color)
+        end
+        if byte & bitmask4 == bitmask4
+          texture.fill_rect(tx + shadow_size, ty + shadow_size,
+                            shadow_size, shadow_size, shadow_color)
+        end
       end
     end
   end
@@ -238,12 +307,13 @@ private
   def draw_flash_layer
     return unless @flash_data
     texture = @layers[LAYER_FLASH]
-    for x in 0...@flash_data.xsize
-      for y in 0...@flash_data.ysize
+    for y in 0...@flash_data.ysize
+      for x in 0...@flash_data.xsize
         rgb12 = @flash_data[x, y] & 0xFFF
-        color = SRRI.rgb12_color(rgb12)
-        texture.fill_rect(@tilesize * x, @tilesize * y,
-                          @tilesize, @tilesize, color)
+        if rgb12 > 0
+          color = SRRI.rgb12_color(rgb12)
+          texture.fill_rect(tile_rect(x, y), color)
+        end
       end
     end
   end
@@ -253,7 +323,7 @@ private
     texture.clear
   end
 
-  def clear_tile_layer
+  def clear_shadow_layer
     texture = @layers[LAYER_SHADOW]
     texture.clear
   end

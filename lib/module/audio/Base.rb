@@ -1,4 +1,5 @@
-module SRRI::Audio
+module SRRI
+module Audio
 
   class Base
 
@@ -14,4 +15,5 @@ module SRRI::Audio
 
   end
 
+end
 end

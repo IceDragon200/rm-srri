@@ -1,5 +1,5 @@
 #
-# rm-srri/lib/interface/idisposable.rb
+# rm-srri/lib/interface/iDisposable.rb
 #   by IceDragon
 #   dc ??/??/2012
 #   dm 29/03/2013
@@ -9,7 +9,7 @@ module Interface
 module IDisposable
 
   def check_disposed
-    raise(SRRI.mk_dispose_error(self)) if disposed?
+    raise(SRRI::Error.mk_dispose_error(self)) if disposed?
   end
 
   def dispose

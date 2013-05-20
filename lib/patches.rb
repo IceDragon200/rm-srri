@@ -2,6 +2,6 @@
 # rm-srri/lib/patches.rb
 # vr 2.0.0
 dir = File.dirname(__FILE__)
-%w(tone StarRuby_Game).each do |fn|
+%w(Tone Game).each do |fn|
   require File.join(dir, 'patches', fn)
 end

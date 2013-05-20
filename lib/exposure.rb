@@ -7,7 +7,7 @@
   if !Object.const_defined?(const_name)
     Object.const_set(const_name, SRRI.const_get(const_name))
   else
-    raise(SRRI::ExposureError,
-          "%s was already defined, did you include rm-srri first?" % const_name)
+    msg = "%s was already defined, did you include rm-srri first?" % const_name
+    raise(SRRI::Error.mk_exposure_error(msg))
   end
 end

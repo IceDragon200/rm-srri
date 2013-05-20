@@ -3,14 +3,16 @@
 #
 
 # core
-require_relative 'module/kernel.rb'
+require_relative 'module/Kernel.rb'
 
 # main
-require_relative 'module/audio.rb'
-require_relative 'module/graphics.rb'
-require_relative 'module/input.rb'
+require_relative 'module/Audio.rb'
+require_relative 'module/Graphics.rb'
+require_relative 'module/Input.rb'
 
-require_relative 'module/rpg.rb'
+require_relative 'module/RPG.rb'
 
 # Extended
-require_relative 'module/texturetool.rb'
+require_relative 'module/TextureTool.rb'
+
+

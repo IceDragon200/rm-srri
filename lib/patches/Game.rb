@@ -1,6 +1,7 @@
 #
 # rm-srri/lib/patches/StarRuby_Game.rb
 #
+__END__
 class StarRuby::Game
 
   attr_accessor :event_thread, :event_thread_active

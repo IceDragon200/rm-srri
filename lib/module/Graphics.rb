@@ -1,7 +1,10 @@
 #
-# rm-srri/lib/module/graphics.rb
+# rm-srri/lib/module/Graphics.rb
+#   dc ??/??/2012
+#   dm 09/05/2013
 # vr 0.7.2.001
-require_relative 'graphics/canvas.rb'
+require_relative 'graphics/Canvas.rb'
+
 module SRRI
 module Graphics
 
@@ -48,6 +51,10 @@ class << self
 
     @fade_time, @fade_time_max = 0, 1
     @target_brightness = 255
+
+    SRRI.try_log do |logger|
+      logger.puts("Graphics initialized")
+    end
   end
 
   # view control
@@ -106,7 +113,23 @@ class << self
 
   fixme(:play_movie, :frame_reset)
 
-  def resize_screen(new_width, new_height)
+  def resize_screen(*args)
+    case args.size
+    when 1
+      arg, = args
+      case arg
+      when Array
+        new_width, new_height = arg
+      when Rect
+        new_width, new_height = arg.to_a[2, 2]
+      when Hash
+        new_width, new_height = arg[:width], arg[:height]
+      when StarRuby::Vector2
+        new_width, new_height = arg.to_a
+      end
+    when 2
+      new_width, new_height = *args
+    end
     @width, @height = new_width.to_i, new_height.to_i
     # Trigger resize if the window is currently open
     SRRI.mk_starruby if @starruby
@@ -164,7 +187,7 @@ class << self
 
     unless @transition
       return
-      #raise(StandardError, "Cannot transition without an active @transition")
+      #raise(TransitionError, "Cannot transition without an active @transition")
     end
 
     @transition_time = 0

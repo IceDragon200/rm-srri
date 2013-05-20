@@ -1,7 +1,7 @@
 require_relative '../local.rb'
 
 rgss_main do
-  sp_background = Sprite.new()
+  sp_background = Sprite.new(nil)
   sp_background.bitmap = Bitmap.new(Graphics.width, Graphics.height)
   sp_background.bitmap.fill_rect(
     0, 0, Graphics.width, Graphics.height, Color.new(255, 255, 255, 255))

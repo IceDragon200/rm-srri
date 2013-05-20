@@ -25,10 +25,12 @@ class SRRI::CairoBitmap < SRRI::Bitmap
   end
 
   def dup
-    raise(SRRI.mk_copy_error(self));
+    raise(SRRI::Error.mk_copy_error(self));
   end
 
-  alias clone dup
+  def clone
+    raise(SRRI::Error.mk_copy_error(self));
+  end
 
   def dispose_cairo
     (@cr_context.destroy; @cr_context = nil) if @cr_context

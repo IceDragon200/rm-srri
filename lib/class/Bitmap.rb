@@ -1,5 +1,7 @@
 #
 # rm-srri/lib/class/Bitmap.rb
+#   by IceDragon
+#   dc ??/??/2012
 #   dm 06/05/2013
 # vr 1.2.0
 class SRRI::Bitmap
@@ -18,7 +20,6 @@ class SRRI::Bitmap
   def initialize(*args)
     @texture  = nil
     @filename = nil
-    @@bitmaps << self
     case args.size
     when 1 # Path
       obj, = *args # String / Texture
@@ -54,6 +55,7 @@ class SRRI::Bitmap
     end
 
     @font = SRRI::Font.new
+    @@bitmaps << self
   # clean up texture
   rescue(Exception) => ex
     @texture.dispose if @texture && !@texture.disposed?
@@ -252,26 +254,45 @@ class SRRI::Bitmap
 
   ##
   # draw_text(Rect rect, String text)
-  # draw_text(Rect rect, String text, Integer align)
+  # draw_text(Rect rect, String text, ALIGN align)
+  # draw_text(Rect rect, String text, ANCHOR align)
   # draw_text(Integer x, Integer y, Integer width, Integer height, String text)
   # draw_text(Integer x, Integer y, Integer width, Integer height, String text,
-  #           Integer align)
+  #           ALIGN align)
+  # draw_text(Integer x, Integer y, Integer width, Integer height, String text,
+  #           ANCHOR align)
+  # draw_text(Hash<Symbol, Object*>)
   def draw_text(*args)
     check_disposed
     align = 0
     case args.size
-    # rect, text
+    # Hash hash
+    when 1
+      x, y, w, h = 0, 0, 0, 0
+      text = ""
+      align = 0
+      hsh, = args
+      x      = hsh[:x]      if hsh.has_key?(:x)
+      y      = hsh[:y]      if hsh.has_key?(:y)
+      width  = hsh[:width]  if hsh.has_key?(:width)
+      height = hsh[:height] if hsh.has_key?(:height)
+      text   = hsh[:text]   if hsh.has_key?(:text)
+      align  = hsh[:align]  if hsh.has_key?(:align)
+      x, y, w, h = Rect.cast(hsh[:rect]).to_a if hsh.has_key?(:rect)
+    # Rect rect, String text
     when 2
       rect, text = *args
       x, y, w, h = Rect.cast(rect).to_a
-    # rect, text, align
+    # Rect rect, String text, ALIGN align
+    # Rect rect, String text, ANCHOR align
     when 3
       rect, text, align = *args
       x, y, w, h = Rect.cast(rect).to_a
-    # x, y, width, height, text
+    # Integer x, Integer y, Integer width, Integer height, String text
     when 5
       x, y, w, h, text = *args
-    # x, y, width, height, text, align
+    # Integer x, Integer y, Integer width, Integer height, String text, ALIGN align
+    # Integer x, Integer y, Integer width, Integer height, String text, ANCHOR align
     when 6
       x, y, w, h, text, align = *args
     else
@@ -287,22 +308,40 @@ class SRRI::Bitmap
 
     if @font.exconfig[:flip_shadow_color]
       sr_color, sr_shadow_color = sr_shadow_color, sr_color
-    else
-      if @font.exconfig[:flip_outline_color]
-        sr_color, sr_outline_color = sr_outline_color, sr_color
-      end
+    elsif @font.exconfig[:flip_outline_color]
+      sr_color, sr_outline_color = sr_outline_color, sr_color
     end
 
     antialias = @font.antialias
 
     tw, th = sr_font.get_size(text)
 
-    y += (h - th) / 2
+    # use MACL::Surface::ANCHOR(s)
+    if align >= 0x3000
+      ax = (align >> 0) & 0xF
+      ay = (align >> 4) & 0xF
+      #az = (align >> 8) & 0xF
+      warn("Using 3D ANCHOR in a 2D context")
+    elsif align >= 0x200
+      ax = (align >> 0) & 0xF
+      ay = (align >> 4) & 0xF
+    else # default to RGSS2/3 style alignment
+      ax = align + 1
+      ay = 2
+    end
 
-    if align == 1 # Align to Center
-      x += (w - tw) / 2
-    elsif align == 2
-      x += (w - tw) # Align to Right
+    case ax
+    #when 0 then nil # NULL
+    #when 1 then x # LEFT
+    when 2 then x += (w - tw) / 2 # CENTER
+    when 3 then x += (w - tw)     # RIGHT
+    end
+
+    case ay
+    #when 0 then nil # NULL
+    #when 1 then y # TOP
+    when 2 then y += (h - th) / 2 # CENTER
+    when 3 then y += (h - th)     # BOTTOM
     end
 
     if @font.shadow
@@ -310,14 +349,9 @@ class SRRI::Bitmap
 
       # shift shadow over
       anchor, amount = *@font.shadow_conf
-      unless defined?(Surface)
-        x += amount
-        y += amount
-      else
-        v = Surface::Tool.anchor_to_vec2(anchor)
-        x += amount * v.x
-        y += amount * v.y
-      end
+      v = SRRI.anchor_to_v2f_a(SRRI.cast_anchor(anchor))
+      x += amount * v[0]
+      y += amount * v[1]
 
       @texture.render_text(
         text, x, y, sr_font, sr_shadow_color, antialias

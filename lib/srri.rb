@@ -1,18 +1,15 @@
 #
 # rm-srri/lib/srri.rb
-#   dm 07/05/2013
+#   dm 09/05/2013
 module SRRI
 
-  VERSION = "0.8.1".freeze
+  VERSION = "0.8.3".freeze
 
-  BIT1 = 1
-  BIT2 = 2
-  BIT3 = 4
-  BIT4 = 8
-  BIT5 = 16
-  BIT6 = 32
-  BIT7 = 64
-  BIT8 = 128
+  ##
+  # Constants
+  BIT = (Array.new(64) { |i| i > 0 ? 2 ** (i - 1) : 0 }).freeze
+
+module Error
 
   class DisposeError < RuntimeError
   end
@@ -23,15 +20,37 @@ module SRRI
   class CopyError < RuntimeError
   end
 
-  class SRRIBreak < Interrupt
-  end
-
   def self.mk_copy_error(obj)
-    CopyError.new("Cannot copy %s" % obj.class.name)
+    CopyError.new("cannot copy %s" % obj.class.name)
   end
 
   def self.mk_dispose_error(obj)
     DisposeError.new("cannot modify disposed %s" % obj.class.name)
+  end
+
+  def self.mk_exposure_error(msg)
+    ExposureError.new(msg)
+  end
+
+end
+
+module Interrupts
+
+  class SRRIBreak < Interrupt
+  end
+
+end
+
+  def self.log=(new_log)
+    @log = new_log
+  end
+
+  def self.log
+    @log
+  end
+
+  def self.try_log
+    yield(@log) if @log
   end
 
 end
@@ -45,8 +64,6 @@ end
 module SRRI
 
   COLOR_TRANS = Color.new(0, 0, 0, 0).freeze
-
-  Font.init
 
   DEFAULT_WIDTH  = 544
   DEFAULT_HEIGHT = 416
@@ -125,7 +142,7 @@ module SRRI
 
   def self.kill_starruby
     dispose_starruby
-    raise(SRRI::SRRIBreak)
+    raise(SRRI::Interrupts::SRRIBreak)
   end
 
   def self.mk_starruby
@@ -152,6 +169,62 @@ module SRRI
                                         ((rgb12 >> 0) & 0xF) * 0x11))
   end
 
+  ## 0.8.2
+  # ::viewport_clip
+  def self.viewport_clip(rect, x, y, w, h)
+    if x < rect.x
+      w -= rect.x - x
+      x = rect.x
+    end
+    if y < rect.y
+      h -= rect.y - y
+      y = rect.y
+    end
+    if (x2 = x + w) > (rx2 = rect.x + rect.width)
+      w -= x2 - rx2
+    end
+    if (y2 = y + h) > (ry2 = rect.y + rect.height)
+      h -= y2 - ry2
+    end
+    return x, y, w, h
+  end
+
+  def self.cast_anchor(anchor)
+    if anchor < 10
+      anchor =case anchor
+              when 0 then 0x200
+              when 1 then 0x211
+              when 2 then 0x212
+              when 3 then 0x213
+              when 4 then 0x221
+              when 5 then 0x222
+              when 6 then 0x223
+              when 7 then 0x231
+              when 8 then 0x232
+              when 9 then 0x233
+              end
+    end
+    anchor
+  end
+
+  def self.anchor_to_v2f_a(anchor)
+    if anchor >= 0x3000
+      raise(ArgumentError, "3D anchors are not supported")
+    elsif anchor >= 0x200
+      x = (anchor >> 0) & 0xF
+      y = (anchor >> 8) & 0xF
+      [(x == 0 ? 0.0 : (x == 1 ? -1.0 : (x == 2 ? 0.5 : 1.0))),
+       (y == 0 ? 0.0 : (y == 1 ? -1.0 : (y == 2 ? 0.5 : 1.0)))]
+    else
+      raise(ArgumentError, "unsupported anchor %d" % anchor)
+      #if anchor
+        #v = MACL::Surface::Tool.anchor_to_vec2(anchor)
+      #end
+    end
+  end
+
+  Font.init
+
 end
 
 def rgss_main
@@ -163,10 +236,11 @@ def rgss_main
   begin
     yield
   rescue SRRI::RGSSReset
+    SRRI.try_log { |logger| logger.puts("Reset Signal received") }
     Graphics._reset
     retry
-  rescue SRRI::SRRIBreak
-
+  rescue SRRI::Interrupts::SRRIBreak
+    SRRI.try_log { |logger| logger.puts("Break Signal received") }
   end
 end
 

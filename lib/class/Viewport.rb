@@ -1,5 +1,5 @@
 #
-# rm-srri/lib/class/viewport.rb
+# rm-srri/lib/class/Viewport.rb
 #   by IceDragon
 #   dc ??/??/2012
 #   dm 29/03/2013

@@ -1,6 +1,8 @@
 #
-# src/class/plane.rb
-#
+# rm-srri/lib/class/Plane.rb
+#   by IceDragon
+#   dc ??/??/2012
+#   dm 09/05/2013
 # vr 0.8.4
 
 ##
@@ -8,9 +10,12 @@
 #
 class SRRI::Plane
 
-  include SRRI::Interface::IViewport
+  include SRRI::Interface::IRenderable
+  include SRRI::Interface::IZOrder
 
-  def draw(texture)
+  register_renderable('Plane')
+
+  def render(texture)
     return false unless @bitmap
     return false unless @visible
     return false if @opacity == 0
@@ -93,8 +98,8 @@ class SRRI::Plane
     @_last_ox, @_last_oy = 0, 0
     @_texture_changed = true
 
-    register_drawable
     setup_iz_id
+    register_renderable
   end
 
   def dispose
