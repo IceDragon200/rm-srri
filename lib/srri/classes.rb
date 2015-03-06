@@ -1,9 +1,13 @@
-#
-# rm-srri/lib/classes.rb
-# vr 2.0.0
-dir = File.dirname(__FILE__)
-%w(rgss_error rgss_reset
-   bitmap color font plane rect
-   sprite table tilemap tone viewport window).each do |fn|
-  require File.join(dir, 'class', fn)
-end
+require 'srri/class/rgss_error'
+require 'srri/class/rgss_reset'
+require 'srri/class/color'
+require 'srri/class/tone'
+require 'srri/class/font'
+require 'srri/class/rect'
+require 'srri/class/table'
+require 'srri/class/bitmap'
+require 'srri/class/viewport'
+require 'srri/class/sprite'
+require 'srri/class/plane'
+require 'srri/class/tilemap'
+require 'srri/class/window'

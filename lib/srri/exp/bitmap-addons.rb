@@ -1,5 +1,5 @@
 #
-# rm-srri/lib-exp/bitmap-addon.rb
+# rm-srri/lib/srri/exp/bitmap-addon.rb
 # vr 1.5.0
 #   CHANGELOG
 #     V 1.5.0
@@ -7,7 +7,6 @@
 #         now has a new last argument, blend_type, as fill_rect has been
 #         replaced by Texture#render_rect
 class SRRI::Bitmap
-
   def sr_cr_blend(cr, blend_type)
     ##
     # right now it doesn't really matter what blend mode this thing is
@@ -19,18 +18,18 @@ class SRRI::Bitmap
     when StarRuby::Texture::BLEND_ADD
       cr.operator = Cairo::Operator::ADD
     when StarRuby::Texture::BLEND_SUBTRACT
-      raise(ArgumentError, "unsupported blend mode :subtract")
+      raise(ArgumentError, 'unsupported blend mode :subtract')
       #cr.operator = Cairo::Operator::ADD
     when StarRuby::Texture::BLEND_MULTIPLY
       cr.operator = Cairo::Operator::MULTIPLY
     when StarRuby::Texture::BLEND_DIVIDE
-      raise(ArgumentError, "unsupported blend mode :divide")
+      raise(ArgumentError, 'unsupported blend mode :divide')
       #cr.operator = Cairo::Operator::DIVIDE
     when StarRuby::Texture::BLEND_SRC_MASK
-      raise(ArgumentError, "unsupported blend mode :src_mask")
+      raise(ArgumentError, 'unsupported blend mode :src_mask')
       #cr.operator = Cairo::Operator::MASK
     when StarRuby::Texture::BLEND_DST_MASK
-      raise(ArgumentError, "unsupported blend mode :dst_mask")
+      raise(ArgumentError, 'unsupported blend mode :dst_mask')
     when StarRuby::Texture::BLEND_CLEAR
       cr.operator = Cairo::Operator::CLEAR
     end
@@ -265,6 +264,37 @@ class SRRI::Bitmap
     draw_round_rect(*args)
   end
 
-  private :sr_cr_blend
+  ##
+  # Copies a sample/selection of the Bitmap and returns it
+  # @overload subsample(rect)
+  #   @param [Rect] rect
+  # @overload subsample(x, y, width, height)
+  #   @param [Integer] x
+  #   @param [Integer] y
+  #   @param [Integer] width
+  #   @param [Integer] height
+  # @return [Bitmap]
+  def subsample(*args)
+    case args.size
+    when 1
+      r = args.first
+    when 4
+      r = Rect.new(*args)
+    else
+      raise ArgumentError,
+            "wrong argument number #{args.size} (expected 1, or 4 arguments)"
+    end
+    nr = self.rect.subsample(r)
+    return nil if nr.empty?
+    Bitmap.new(nr.width, nr.height).tap { |o| o.blt(0, 0, self, nr.rect) }
+  end
 
+  ###
+  # @param [String] filename
+  ###
+  def save_file(filename)
+    @texture.save_file(filename)
+  end
+
+  private :sr_cr_blend
 end

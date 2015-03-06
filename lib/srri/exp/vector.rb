@@ -7,7 +7,6 @@
 #   Vector Extension
 #
 class StarRuby::Vector
-
   def normalize!
     rad = radian
     self.x = Math.cos(rad)
@@ -31,5 +30,4 @@ class StarRuby::Vector
   def flipflop
     dup.flipflop!
   end unless method_defined?(:flipflop)
-
 end

@@ -1,12 +1,7 @@
-#
-# rm-srri/lib/class/Font.rb
-#   by IceDragon
-#   dc ??/??/2012
-#   dm 11/06/2013
-# vr 1.3.1
+require 'starruby/font'
+
 module SRRI
   class Font
-
     ### class-variables
     #
     @@font_cache = {}
@@ -20,8 +15,8 @@ module SRRI
             :italic,        # RGSS2/3
             :shadow,        # RGSS2/3
             :outline,       # RGSS3
-            :out_color,     # RGSS3
             :color,         # RGSS2/3
+            :out_color,     # RGSS3
             :antialias,     # SRRI
             :shadow_color,  # SRRI
             :shadow_conf,   # SRRI
@@ -40,13 +35,19 @@ module SRRI
 
     ##
     # initialize
-    def initialize
-      default!
+    def initialize(name = nil, size = nil)
+      set_default
+      self.name = name if name
+      self.size = size if size
+    end
+
+    def name=(new_name)
+      @name = Array(new_name)
     end
 
     ## (SRRI)
-    # default!
-    def default!
+    # set_default
+    def set_default
       klass = self.class
       @name         = klass.default.name.dup
       @size         = klass.default.size
@@ -63,16 +64,17 @@ module SRRI
       @underline    = klass.default.underline
       self
     end
+    private :set_default
 
     ## (SRRI)
-    # default
-    def default
-      dup.default!
+    # is this font valid?
+    def valid?
+      (@name && @name.any?)
     end
 
     ## (SRRI)
     # to_strb_font
-    def to_strb_font(fallback=false)
+    def to_strb_font(fallback = false)
       font_name, = @name
       size = @size - @@strb_size_offset
       options = {
@@ -92,6 +94,7 @@ module SRRI
           break if abs_fontname = SRRI::Font.search_font(bs_fontname, ext)
         end
 
+        return unless abs_fontname
         args = [abs_fontname, size, options]
 
         retry_count = 0
@@ -154,7 +157,7 @@ module SRRI
     def self.init
       @default = allocate
       # // Array or String
-      @default.name      = ['ProggySmall.ttf']
+      @default.name      = ['VL-Gothic-Regular.ttf']
       @default.size      = 20
       # Color
       @default.color     = Color.new( 255, 255, 255, 255) # // RGSS2
@@ -177,7 +180,7 @@ module SRRI
       }
       @default.underline = false
 
-      @font_path = ["fonts", "Fonts"]
+      @font_path = [File.expand_path("fonts"), File.expand_path("Fonts")]
       @font_ext  = ['.ttf', '.TTF']
 
       SRRI.try_log do |logger|
@@ -221,5 +224,8 @@ module SRRI
       @font_ext = new_font_ext
     end
 
+    def self.exist?(filename)
+      true
+    end
   end
 end

@@ -29,7 +29,7 @@ class SRRI::SoftSprite
     @visible = true
 
     register_renderable
-    setup_iz_id
+    setup_renderable_id
   end
 
   def update

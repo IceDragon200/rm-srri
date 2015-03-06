@@ -1,5 +1,5 @@
 #
-# rm-srri/lib/interface/iZOrder.rb
+# rm-srri/lib/interface/i_z_order.rb
 #   by IceDragon
 #   dc ??/??/2012
 #   dm 29/03/2013
@@ -7,18 +7,17 @@
 module SRRI
   module Interface
     module IZOrder
-
-      @@iz_id = 0
+      @@renderable_id = 0
 
     private
 
-      def setup_iz_id
-        @iz_id = @@iz_id += 1
+      def setup_renderable_id
+        @renderable_id = @@renderable_id += 1
       end
 
     public
 
-      attr_reader :iz_id
+      attr_reader :renderable_id
 
       def z
         @z
@@ -41,7 +40,6 @@ module SRRI
           Graphics.canvas.reorder_z
         end
       end
-
     end
   end
 end

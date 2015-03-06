@@ -4,11 +4,9 @@
 # vr 1.0.0
 module SRRI
   module Graphics
-
     # TODO:
     #   Implement Layer system.
     class Canvas
-
       attr_accessor :drawable
       attr_reader :texture
       attr_reader :opacity
@@ -23,7 +21,7 @@ module SRRI
         #end
         #@drawable.clear
         #zmap.keys.sort.each do |k|
-        #  @drawable.concat(zmap.fetch(k).sort_by { |o| [o.z, o.y, o.iz_id] })
+        #  @drawable.concat(zmap.fetch(k).sort_by { |o| [o.z, o.y, o.renderable_id] })
         #end
         @sorted_drawable = true
         return self
@@ -93,10 +91,8 @@ module SRRI
       end
 
       def translate(x, y)
-        yield(x, y, rect)
+        yield x, y, rect
       end
-
     end
-
   end
 end

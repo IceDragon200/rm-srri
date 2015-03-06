@@ -1,14 +1,9 @@
-#
-# rm-srri/lib/modules.rb
-#
 ## core
-require_relative 'module/kernel.rb'
-require_relative 'module/sr_kernel.rb'
+require 'srri/module/kernel'
+require 'srri/module/main'
 ## main
-require_relative 'module/audio.rb'
-require_relative 'module/graphics.rb'
-require_relative 'module/input.rb'
+require 'srri/module/audio'
+require 'srri/module/graphics'
+require 'srri/module/input'
 ## extended
-require_relative 'module/texture_tool.rb'
-
-
+require 'srri/module/texture_tool'

@@ -1,7 +1,13 @@
-#
-# rm-srri/lib/class/color.rb
-#   by IceDragon
-#   dc ??/??/2012
-#   dm 09/05/2013
-# vr 1.0.2
-SRRI::Color = StarRuby::Color
+require 'starruby/color'
+
+module SRRI
+  class Color < StarRuby::Color
+    def initialize(*args)
+      if args.empty?
+        super 0, 0, 0, 0
+      else
+        super
+      end
+    end
+  end
+end

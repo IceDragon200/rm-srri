@@ -1,13 +1,17 @@
+require 'zlib'
+require 'fiddle'
+require 'srri/interfaces'
+require 'srri/classes'
+require 'srri/modules'
+require 'srri/patches'
+require 'srri/exposure'
+
 module SRRI
-
-  VERSION = "0.8.3".freeze
-
   ##
   # Constants
   BIT = (Array.new(64) { |i| i > 0 ? 2 ** (i - 1) : 0 }).freeze
 
   module Error
-
     class DisposeError < RuntimeError
     end
 
@@ -18,24 +22,21 @@ module SRRI
     end
 
     def self.mk_copy_error(obj)
-      CopyError.new("cannot copy %s" % obj.class.name)
+      CopyError.new('cannot copy %s' % obj.class.name)
     end
 
     def self.mk_dispose_error(obj)
-      DisposeError.new("cannot modify disposed %s" % obj.class.name)
+      DisposeError.new('cannot modify disposed %s' % obj.class.name)
     end
 
     def self.mk_exposure_error(msg)
       ExposureError.new(msg)
     end
-
   end
 
-  module Interrupts
-
-    class SRRIBreak < Interrupt
+  module Interrupt
+    class SRRIBreak < RuntimeError
     end
-
   end
 
   def self.log=(new_log)
@@ -62,25 +63,53 @@ module SRRI
     File.join(File.dirname(str), File.basename(str, File.extname(str)))
   end
 
-  ##
+  ###
   # ::find_path(String filename) -> String
-  def self.find_path(filename)
+  ###
+  def self.find_path(filename, exts=nil)
     filename = File.join(File.dirname(filename), File.basename(filename, File.extname(filename)))
     org_filename = filename.dup
     filename = File.expand_path(filename)
     result = nil
-    if n = Dir.glob(filename + ".*").first
-      result = n
-    else
+    #search_ext = exts ? "{#{exts.join(",")}}" : ".*"
+    search_ext = ".*"
+
+    local_filename = filename + search_ext
+    local_basename = File.basename(local_filename, File.extname(local_filename))
+    local_dirname = File.dirname(local_filename)
+
+    #if n = Dir.glob(local_filename).first
+    #  result = n
+    ###
+    #if !(n = Dir.glob(local_filename)).empty?
+    #  if exts
+    #    result = n.find { |s| exts.include?(File.extname(s)) }
+    #  else
+    #    result = n.first
+    #  end
+    ###
+
+    entries = Dir.entries(local_dirname)-[".",".."]
+    if !entries.empty?
+      result = entries.find do |s|
+        File.basename(s, File.extname(s)).casecmp(local_basename) == 0
+      end
+      result = File.join(local_dirname, result) if result
+    end
+
+    unless result
       pth = File.join(rtp_path, org_filename)
-      if n = Dir.glob(pth + ".*").first
+      if n = Dir.glob(pth + search_ext).first
         result = n
       else
-        raise(Errno::ENOENT, org_filename)
+        #STDERR.puts "looking for filename: #{filename}{#{exts.join(", ")}}"
+        raise Errno::ENOENT, org_filename
       end
     end
+
     #raise(Errno::ENOENT, org_filename) unless result
     yield result if block_given?
+
     return result
   end
 
@@ -95,7 +124,7 @@ module SRRI
 
   def self.kill_starruby
     dispose_starruby
-    raise(SRRI::Interrupts::SRRIBreak)
+    raise SRRI::Interrupt::SRRIBreak
   end
 
   def self.mk_starruby
@@ -173,17 +202,9 @@ module SRRI
       #end
     end
   end
-
-end
-
-require 'starruby/local.rb'
-
-%w(interfaces classes modules patches exposure).each do |fn|
-  require File.join(File.dirname(__FILE__), fn)
 end
 
 module SRRI
-
   Font.init
 
   COLOR_TRANS = Color.new(0, 0, 0, 0).freeze
@@ -204,7 +225,8 @@ module SRRI
   @@flash_cache = {}
 
   @@current_game = nil
-
 end
 
-include SRRI::SRKernel
+include SRRI::Main
+private :rgss_main
+private :rgss_stop

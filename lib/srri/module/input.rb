@@ -4,7 +4,6 @@
 module SRRI
   module Input
   class << self
-
     ### class_variables
     @@input_table = {
       ESC:   [:escape],
@@ -166,7 +165,6 @@ module SRRI
       @starruby.update_state
       raise SRRI::RGSSReset if Input.trigger?(:f12)
     end
-
   end # class << self
   end
 end

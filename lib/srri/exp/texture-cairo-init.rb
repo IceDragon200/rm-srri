@@ -1,10 +1,8 @@
 #
 # rm-srri/lib-exp/texture-cairo-init.rb
 # vr 1.2.0
-__END__
 # currently disabled cairo usage
 class StarRuby::Texture
-
   attr_accessor :_cairo_surface, :_cairo_context
 
   # use init_cairo_bind(true) when initializing the screen Texture
@@ -65,5 +63,4 @@ class StarRuby::Texture
     texture.init_cairo_bind(true)
     return texture
   end
-
 end

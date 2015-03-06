@@ -1,9 +1,5 @@
-#
-# rm-srri/lib/srri/module/sr_kernel.rb
-#
 module SRRI
-  module SRKernel
-
+  module Main
     def rgss_main
       SRRI.mk_starruby
       SRRI::Graphics.init
@@ -16,7 +12,7 @@ module SRRI
         SRRI.try_log { |logger| logger.puts("Reset Signal received") }
         Graphics.__reset__
         retry
-      rescue SRRI::Interrupts::SRRIBreak
+      rescue SRRI::Interrupt::SRRIBreak
         SRRI.try_log { |logger| logger.puts("Break Signal received") }
       end
     end
@@ -24,6 +20,5 @@ module SRRI
     def rgss_stop
       loop { Graphics.update }
     end
-
   end
 end

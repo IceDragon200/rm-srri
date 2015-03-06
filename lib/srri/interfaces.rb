@@ -1,6 +1,3 @@
-#
-# rm-srri/lib/interfaces.rb
-# vr 0.8.0
-require_relative 'interface/iDisposable.rb'
-require_relative 'interface/iRenderable.rb'
-require_relative 'interface/iZOrder.rb'
+require 'srri/interface/i_disposable'
+require 'srri/interface/i_renderable'
+require 'srri/interface/i_z_order'

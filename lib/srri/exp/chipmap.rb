@@ -84,12 +84,12 @@ class SRRI::Chipmap
 
     @layers = Array.new(LAYER_COUNT, nil)
 
-    setup_iz_id
+    setup_renderable_id
     register_renderable
     if block_given?
       yield self
       refresh
-      view_all
+      reveal
     end
   end
 
@@ -215,18 +215,18 @@ class SRRI::Chipmap
     end
   end
 
-private
-
-  def any_data
-    data = @map_data || @shadow_data || @flash_data
-  end
-
   def data_xsize
     return any_data.xsize
   end
 
   def data_ysize
     return any_data.ysize
+  end
+
+private
+
+  def any_data
+    @map_data || @shadow_data || @flash_data
   end
 
   def assert_data

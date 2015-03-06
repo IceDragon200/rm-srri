@@ -3,7 +3,6 @@
 #   dm 26/05/2013
 # vr 1.0.0
 module Kernel
-
   ##
   # load_data(String filename)
   def load_data(filename)
@@ -31,5 +30,4 @@ module Kernel
     p args
     #return nil
   end unless method_defined?(:msgbox_p)
-
 end

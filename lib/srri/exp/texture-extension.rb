@@ -3,7 +3,6 @@
 #   dm 27/03/2013
 # vr 1.0.1
 class StarRuby::Texture
-
   ## depreceated
   # clear_rect(Integer x, Integer y, Integer w, Integer h)
   def clear_rect(x, y, w, h)
@@ -34,5 +33,4 @@ class StarRuby::Texture
     texture.render_texture(self, 0, 0)
     return true
   end unless method_defined?(:render)
-
 end

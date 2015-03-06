@@ -1,18 +1,11 @@
-#
-# rm-srri/lib/module/Graphics.rb
-#   dc ??/??/2012
-#   dm 09/05/2013
-# vr 0.7.2.001
-require_relative 'graphics/canvas.rb'
-require_relative 'graphics/alpha_transition.rb'
+require 'srri/module/graphics/canvas'
+require 'srri/module/graphics/alpha_transition'
 
 module SRRI
   module Graphics
-
     @canvas = SRRI::Graphics::Canvas.new(nil)
 
   class << self
-
     attr_accessor :starruby, :canvas, :display_fps
 
     def display_fps?
@@ -40,7 +33,7 @@ module SRRI
     def init
       @frame_count = 0
       @canvas.texture = @starruby.screen
-      @starruby.frame_rate = @frame_rate
+      @starruby.frame_rate = @frame_rate if @starruby
       @fade_time, @fade_time_max = 0, 1
       @target_brightness = 255
 
@@ -55,21 +48,19 @@ module SRRI
     end
 
     def update
-      return false unless @starruby
-      return false if @starruby.disposed?
-      return SRRI.kill_starruby if @starruby.window_closing?
+      if @starruby
+        return false if @starruby.disposed?
+        return SRRI.kill_starruby if @starruby.window_closing?
+      end
       update_fade if fading?
-      # V2 Rendering
-      #@starruby.update_screen do
-        # V1 Rendering
-        @canvas.redraw
-        update_transition if @transition
-      #  @canvas.render
-      #end
-      @starruby.update_screen # V1 Rendering
-      @starruby.wait
-      if display_fps?
-        @starruby.title = "FPS: %-04s" % @starruby.fps.round(2)
+      @canvas.redraw
+      update_transition if @transition
+      if @starruby
+        @starruby.update_screen # V1 Rendering
+        @starruby.wait
+        if display_fps?
+          @starruby.title = "FPS: %-04s" % @starruby.fps.round(2)
+        end
       end
       @frame_count += 1
     end
@@ -130,7 +121,10 @@ module SRRI
       end
       @width, @height = new_width.to_i, new_height.to_i
       # Trigger resize if the window is currently open
-      SRRI.mk_starruby if @starruby
+      if @starruby
+        SRRI.mk_starruby
+        @canvas.texture = @starruby.screen if @canvas
+      end
     end
 
     def snap_to_bitmap
@@ -167,6 +161,7 @@ module SRRI
       @transition_time = -1
       @transition_time_max = 1
     end
+    private :freeze_screen
 
     def transition(*args)
       filename = nil
@@ -198,6 +193,7 @@ module SRRI
       delta = @transition_time > -1 ? @transition_time : 0.0
       delta / [@transition_time_max, 1].max.to_f
     end
+    private :transition_rate
 
     def update_transition
       delta = transition_rate
@@ -216,6 +212,7 @@ module SRRI
 
       dispose_transition if @transition_time >= @transition_time_max
     end
+    private :update_transition
 
     def dispose_transition
       @frozen_texture.dispose if @freeze_texture
@@ -223,6 +220,7 @@ module SRRI
       @frozen_texture = nil
       @transition = nil
     end
+    private :dispose_transition
 
     def frozen_screen?
       !!@frozen_texture
@@ -254,6 +252,5 @@ module SRRI
     def self.freeze(*args, &block)
       freeze_screen(*args, &block)
     end
-
   end
 end

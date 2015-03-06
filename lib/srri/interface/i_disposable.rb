@@ -1,5 +1,5 @@
 #
-# rm-srri/lib/interface/iDisposable.rb
+# rm-srri/lib/interface/i_disposable.rb
 #   by IceDragon
 #   dc ??/??/2012
 #   dm 29/03/2013
@@ -7,7 +7,6 @@
 module SRRI
   module Interface
     module IDisposable
-
       def disposed?
         !!@_disposed
       end
@@ -20,7 +19,6 @@ module SRRI
         check_disposed
         @_disposed = true
       end
-
     end
   end
 end

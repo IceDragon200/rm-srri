@@ -1,14 +1,7 @@
-#
-# rm-srri/lib/patches/input-vxa_constants.rb
-#   by IceDragon
-#   dc 30/06/2013
-#   dm 30/06/2013
-# vr 1.0.0
-#   This file contains a patch for RM-VX styled input, where you would use
-#   a constant for input checks.
+# This file contains a patch for RM-VX styled input, where you would use
+# a constant for input checks.
 module SRRI
   module Input
-
     A     = :A
     B     = :B
     C     = :C
@@ -36,6 +29,5 @@ module SRRI
     F10   = :F10
     F11   = :F11
     F12   = :F12
-
   end
 end
