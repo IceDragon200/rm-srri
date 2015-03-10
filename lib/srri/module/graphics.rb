@@ -32,7 +32,8 @@ module SRRI
 
     def init
       @frame_count = 0
-      @canvas.texture = @starruby.screen
+      @canvas.texture.dispose if @canvas.texture && !@canvas.texture.disposed?
+      @canvas.texture = StarRuby::Texture.new(@starruby.width, @starruby.height)
       @starruby.frame_rate = @frame_rate if @starruby
       @fade_time, @fade_time_max = 0, 1
       @target_brightness = 255
@@ -56,7 +57,8 @@ module SRRI
       @canvas.redraw
       update_transition if @transition
       if @starruby
-        @starruby.update_screen # V1 Rendering
+        @starruby.draw @canvas.texture
+        @starruby.swap_buffer
         @starruby.wait
         if display_fps?
           @starruby.title = "FPS: %-04s" % @starruby.fps.round(2)
